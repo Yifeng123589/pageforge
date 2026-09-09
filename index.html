@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PageForge · 可视化网页设计器</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect x='28' y='28' width='216' height='216' rx='56' fill='%235E6AD2'/%3E%3Crect x='268' y='28' width='216' height='216' rx='56' fill='%232997FF'/%3E%3Crect x='28' y='268' width='216' height='216' rx='56' fill='%23F5F5F7'/%3E%3Crect x='308' y='268' width='216' height='216' rx='56' fill='%232A2A30'/%3E%3C/svg%3E">
+</head>
+<body>
+  <!-- 顶部工具栏 -->
+  <header id="toolbar">
+    <div class="brand" title="PageForge — 可视化网页设计器">
+      <span class="brand-mark">P</span>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="page-title-box">
+      <label for="page-title">页面标题</label>
+      <input id="page-title" type="text" value="我的页面" spellcheck="false">
+    </div>
+
+    <div class="actions">
+      <button id="btn-undo" class="btn ghost" title="撤销 (Ctrl+Z)" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button id="btn-redo" class="btn ghost" title="恢复 (Ctrl+Y)" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <span class="toolbar-divider"></span>
+
+      <!-- 文件下拉 -->
+      <div class="dd" id="dd-file">
+        <button class="btn ghost dd-btn" title="文件操作">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          文件 <span class="dd-caret">▾</span>
+        </button>
+        <div class="dd-menu">
+          <button id="btn-new" class="dd-item" title="新建页面 (Ctrl+N)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            新建
+          </button>
+          <button id="btn-open" class="dd-item" title="打开 HTML/JSON (Ctrl+O)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            打开…
+          </button>
+          <input type="file" id="file-open" accept=".json,application/json,.html,.htm,text/html" hidden>
+          <button id="btn-save" class="dd-item" title="保存工程 JSON (Ctrl+S)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            保存
+          </button>
+          <button id="btn-export" class="dd-item dd-primary" title="导出为独立 HTML 文件 (Ctrl+E)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            导出
+          </button>
+          <button id="btn-page" class="dd-item" title="页面设置">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            页面设置
+          </button>
+        </div>
+      </div>
+
+      <!-- AI 下拉 -->
+      <div class="dd" id="dd-ai">
+        <button class="btn ghost dd-btn" title="AI 与风格">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4c1.2.4 2.2 1.2 2.8 2.4a4 4 0 0 1 1 2.6c1.4.6 2.2 2 2.2 3.5a4 4 0 0 1-2.2 3.6c0 1.5-.6 2.8-1.7 3.7a5 5 0 0 1-6.2.3 5 5 0 0 1-6.2-.3A5.2 5.2 0 0 1 1.2 18a4 4 0 0 1-2.2-3.6c0-1.5.8-2.9 2.2-3.5a4 4 0 0 1 1-2.6A4.5 4.5 0 0 1 8 6a4 4 0 0 1 4-4z"/><circle cx="12" cy="12" r="3"/></svg>
+          AI <span class="dd-caret">▾</span>
+        </button>
+        <div class="dd-menu">
+          <button id="btn-ai" class="dd-item" title="AI 助手（聊天/配色/诊断/生成初稿）">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            AI 助手
+          </button>
+          <button id="btn-color" class="dd-item" title="智能配色">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/><circle cx="7.5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="7.5" r="1" fill="currentColor"/><circle cx="16.5" cy="12" r="1" fill="currentColor"/></svg>
+            智能配色
+          </button>
+          <button id="btn-theme" class="dd-item" title="一键换风格">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9c0-1.2-.9-2-2-2h-2.5a2 2 0 0 1-1.9-2.6c.3-1 .1-1.8-.7-2.4-.6-.4-.9-1-.9-1.7 0-1.2.9-2.3 2-2.3 2.9.4 5.9 1.7 7 4.1z"/><circle cx="8" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/><circle cx="16" cy="12" r="1.2" fill="currentColor"/></svg>
+            风格
+          </button>
+          <button id="btn-beautify" class="dd-item" title="一键苹果风">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="M3 21h9"/><path d="M12.5 21.5 3 12l7.5-7.5 9.5 9.5z"/></svg>
+            美化
+          </button>
+        </div>
+      </div>
+
+      <!-- 工具下拉 -->
+      <div class="dd" id="dd-tools">
+        <button class="btn ghost dd-btn" title="工具">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          工具 <span class="dd-caret">▾</span>
+        </button>
+        <div class="dd-menu">
+          <button id="btn-template" class="dd-item" title="从模板开始">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            模板库
+          </button>
+          <button id="btn-fitter" class="dd-item" title="曲线拟合器">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            曲线拟合器
+          </button>
+          <button id="btn-pages" class="dd-item" title="页面管理（多页面）">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
+            多页面
+          </button>
+        </div>
+      </div>
+
+      <!-- 视图下拉 -->
+      <div class="dd" id="dd-view">
+        <button class="btn ghost dd-btn" title="视图模式">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          视图 <span class="dd-caret">▾</span>
+        </button>
+        <div class="dd-menu">
+          <button id="btn-preview" class="dd-item" title="预览模式（隐藏编辑器界面，看成品效果）">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            预览
+          </button>
+          <button id="btn-demo" class="dd-item" title="演示模式（全屏逐页演示，左右键翻页）">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/><polygon points="10 8 16 11 10 14 10 8"/></svg>
+            演示
+          </button>
+          <button id="btn-fullscreen" class="dd-item" title="全屏 / 退出全屏 (F11)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            全屏
+          </button>
+          <button id="btn-welcome" class="dd-item" title="重新打开新手开屏与引导">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            新手引导
+          </button>
+        </div>
+      </div>
+
+      <span id="save-status" class="save-dot" title="自动保存状态" data-state="saved"></span>
+    </div>
+  </header>
+
+  <!-- 左侧组件面板 -->
+  <aside id="left-panel">
+    <div id="left-tabs">
+      <button class="ltab active" data-ltab="blocks">组件</button>
+      <button class="ltab" data-ltab="assets">素材</button>
+    </div>
+    <input type="text" id="block-search" placeholder="搜索组件…（如：按钮 / 表格 / 导航）" spellcheck="false">
+    <div id="left-blocks"></div>
+    <div id="left-assets" hidden>
+      <div id="asset-tabs">
+        <button class="atab active" data-atab="icons">图标</button>
+        <button class="atab" data-atab="images">图片</button>
+        <button class="atab" data-atab="texts">文案</button>
+      </div>
+      <div id="asset-body"></div>
+    </div>
+  </aside>
+
+  <!-- 编辑器容器 -->
+  <div id="gjs"></div>
+
+  <!-- 右侧面板 Tab（样式 / 图层 / 设置，替代 GrapesJS 默认图标按钮）-->
+  <div id="right-tabs">
+    <button class="rtab active" data-tab="styles" title="选中元素的样式设置">样式</button>
+    <button class="rtab" data-tab="layers" title="页面元素树（图层）">图层</button>
+    <button class="rtab" data-tab="traits" title="选中元素的属性设置">设置</button>
+    <button class="rtab" data-tab="code" title="代码视图（查看/编辑页面 HTML）">代码</button>
+  </div>
+
+  <!-- 空画布引导层 -->
+  <div id="canvas-guide" hidden>
+    <div class="guide-card">
+      <div class="guide-icon">🧩</div>
+      <div class="guide-title">从左侧拖入第一个组件开始</div>
+      <div class="guide-sub">点击左侧的组件块，或直接拖到画布上</div>
+      <div class="guide-actions">
+        <button id="guide-template" class="btn primary">📄 从模板开始</button>
+        <button id="guide-close" class="btn ghost">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 首次开屏（只出现一次；视图 → 新手引导 可重看） -->
+  <div id="welcome" hidden>
+    <div class="welcome-card">
+      <button id="welcome-close" class="welcome-x" title="关闭">✕</button>
+      <div class="welcome-logo">P</div>
+      <h1 class="welcome-h1">像拼乐高一样<br>做网页</h1>
+      <p class="welcome-sub">不用写一行代码：拖块、AI 帮拼、一键导出 HTML。<br>现在就做出你的第一个页面。</p>
+      <div class="welcome-paths">
+        <button class="welcome-path" id="welcome-tpl">
+          <span class="wp-icon">🗂</span>
+          <span class="wp-body"><span class="wp-t">从模板开始<i>推荐</i></span><span class="wp-d">4 套成品页面，选一个改改就是你的</span></span>
+        </button>
+        <button class="welcome-path" id="welcome-ai">
+          <span class="wp-icon">🤖</span>
+          <span class="wp-body"><span class="wp-t">让 AI 出初稿<i>免费模型可用</i></span><span class="wp-d">一句话描述想法，AI 生成整页再微调</span></span>
+        </button>
+        <button class="welcome-path" id="welcome-blank">
+          <span class="wp-icon">📄</span>
+          <span class="wp-body"><span class="wp-t">从空白开始</span><span class="wp-d">我就想自己拖，别管我</span></span>
+        </button>
+      </div>
+      <div class="welcome-foot">第一次来？推荐「从模板开始」，跟着页面提示走就行</div>
+    </div>
+  </div>
+
+  <!-- 三步新手引导浮卡 -->
+  <div id="guide-float" hidden>
+    <div class="gf-dots"><i class="on"></i><i></i><i></i></div>
+    <div class="gf-title" id="gf-title"></div>
+    <div class="gf-text" id="gf-text"></div>
+    <div class="gf-actions">
+      <button id="gf-skip" class="gf-btn gf-ghost">跳过</button>
+      <button id="gf-next" class="gf-btn gf-primary">下一步</button>
+    </div>
+  </div>
+
+  <!-- 保存状态提示 -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- 新建确认弹窗 -->
+  <div id="modal-mask" class="modal-mask" hidden>
+    <div class="modal">
+      <div class="modal-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <h3>新建页面</h3>
+      <p>将清空当前画布，未保存的改动会丢失。</p>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn ghost">取消</button>
+        <button id="modal-confirm" class="btn primary">确定替换</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模板库弹窗 -->
+  <div id="modal-template" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>从模板开始</h3>
+      <p>选择一个模板载入画布（将替换当前内容）。</p>
+      <div id="template-grid" class="template-grid"></div>
+      <div class="modal-actions">
+        <button class="btn ghost modal-close">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配色面板弹窗 -->
+  <div id="modal-color" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>智能配色</h3>
+      <p>预设方案一键应用；或选主色自动生成和谐配色，点击色块应用到选中元素。</p>
+      <div class="color-section">
+        <div class="color-sec-title">预设方案</div>
+        <div id="color-presets" class="color-presets"></div>
+      </div>
+      <div class="color-section">
+        <div class="color-sec-title">自定义主色</div>
+        <div class="color-custom-row">
+          <input type="color" id="color-main" value="#5e6ad2">
+          <button id="color-generate" class="btn ghost">生成和谐配色</button>
+          <button id="color-from-image" class="btn ghost">从图片取色</button>
+          <input type="file" id="color-image-file" accept="image/*" hidden>
+        </div>
+        <div id="color-palette" class="color-palette"></div>
+      </div>
+      <p class="color-hint">提示：点色块应用到<b>选中元素</b>的背景色；右键点色块设为文字色。</p>
+      <div class="modal-actions">
+        <button class="btn ghost modal-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 美化面板弹窗 -->
+  <div id="modal-beautify" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>一键苹果风</h3>
+      <p>先在画布选中一个元素，再点下面的预设，立即变成苹果风样式。</p>
+      <div id="beautify-grid" class="beautify-grid"></div>
+      <div class="modal-actions">
+        <button class="btn ghost modal-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 曲线拟合器弹窗 -->
+  <div id="modal-fitter" class="modal-mask" hidden>
+    <div class="modal modal-xl">
+      <h3>曲线拟合器</h3>
+      <p>在网格上点击添加数据点（可拖动），选拟合方式，实时生成数学曲线；点"插入页面"把它变成波浪分割线。</p>
+      <div class="fitter-layout">
+        <div class="fitter-canvas-wrap">
+          <svg id="fit-canvas" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div class="fitter-controls">
+          <label class="fit-label">拟合方式</label>
+          <select id="fit-type">
+            <option value="poly3">多项式（3 次）</option>
+            <option value="poly2">多项式（2 次）</option>
+            <option value="poly4">多项式（4 次）</option>
+            <option value="poly5">多项式（5 次）</option>
+            <option value="exp">指数 e^x</option>
+            <option value="sin">正弦 sin</option>
+          </select>
+          <div id="fit-formula" class="fit-formula">点击添加数据点</div>
+          <div id="fit-r2" class="fit-r2"></div>
+          <div class="fit-actions">
+            <button id="fit-sample-sin" class="btn ghost">示例·波浪</button>
+            <button id="fit-sample-poly" class="btn ghost">示例·抛物线</button>
+            <button id="fit-clear" class="btn ghost">清空</button>
+          </div>
+          <label class="fit-label">插入形式</label>
+          <select id="fit-insert-type">
+            <option value="wave">波浪分割线</option>
+            <option value="btn">曲线按钮</option>
+            <option value="badge">曲线徽章</option>
+          </select>
+          <div id="fit-preview" class="fit-preview"></div>
+          <label class="fit-label">曲线颜色</label>
+          <div class="fit-color-row">
+            <input type="color" id="fit-color" value="#5e6ad2">
+            <span id="fit-color-hex">#5e6ad2</span>
+          </div>
+          <button id="fit-insert" class="btn primary" disabled>插入页面 ↓</button>
+          <p class="fit-hint">提示：点击画布加点，拖点调整，右键删点。</p>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost modal-close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页面管理弹窗 -->
+  <div id="modal-pages" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>页面管理</h3>
+      <p>一个网站可以有很多页面（首页、关于我们、联系我们…）。把导航栏里的链接地址改成 <b>#页面名</b>（例如 #关于我们），点击就能跳到对应页面。</p>
+      <div id="pages-list"></div>
+      <div class="modal-actions">
+        <button id="pages-add" class="btn primary">＋ 新增页面</button>
+        <button id="pages-close" class="btn ghost">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页面重命名弹窗 -->
+  <div id="modal-page-name" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>重命名页面</h3>
+      <div class="page-form">
+        <label>页面名称</label>
+        <input type="text" id="page-name-input" placeholder="例如：关于我们">
+      </div>
+      <div class="modal-actions">
+        <button id="page-name-cancel" class="btn ghost">取消</button>
+        <button id="page-name-save" class="btn primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 插入图片弹窗 -->
+  <div id="modal-image" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>插入图片</h3>
+      <p>选择一张图片放到页面上（自动压缩，导出后离线也能显示）。</p>
+      <div class="img-options">
+        <button id="img-file-btn" class="btn primary">📁 从电脑选择图片</button>
+        <button id="img-ph-btn" class="btn ghost">🖼 使用示例占位图</button>
+      </div>
+      <div class="page-form" style="margin-top:14px;">
+        <label>或输入图片网址</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="img-url" placeholder="https://... 或 https://.../图片.jpg" style="flex:1;">
+          <button id="img-url-insert" class="btn primary">插入</button>
+        </div>
+      </div>
+      <input type="file" id="img-file" accept="image/*" hidden>
+      <div class="modal-actions">
+        <button id="img-close" class="btn ghost">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 风格系统弹窗（M6） -->
+  <div id="modal-theme" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>一键换风格</h3>
+      <p>同一内容，换个风格。点一个主题应用到当前页面（可 Ctrl+Z 撤销）。</p>
+      <div id="theme-list"></div>
+      <div class="modal-actions">
+        <button id="theme-close" class="btn ghost">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 智能配色弹窗（A1） -->
+  <div id="modal-ai-color" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>🎨 智能配色</h3>
+      <p>描述你想要的风格，AI 生成整套配色方案（如：清爽的海洋风、复古胶片感）。</p>
+      <div class="page-form">
+        <label>配色风格描述</label>
+        <input type="text" id="ai-color-input" placeholder="例如：温暖治愈的奶茶色 / 科技感的深蓝紫">
+      </div>
+      <div id="ai-color-result"></div>
+      <div class="modal-actions">
+        <button id="ai-color-cancel" class="btn ghost">关闭</button>
+        <button id="ai-color-apply" class="btn primary" disabled>应用到页面</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 设计诊断弹窗（A2） -->
+  <div id="modal-ai-diag" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>🔍 设计诊断</h3>
+      <p>AI 分析当前页面的排版 / 间距 / 配色，给出可一键应用的建议。</p>
+      <div id="ai-diag-loading" hidden>分析中…（需要一点时间）</div>
+      <div id="ai-diag-result"></div>
+      <div class="modal-actions">
+        <button id="ai-diag-cancel" class="btn ghost">关闭</button>
+        <button id="ai-diag-apply-all" class="btn primary" disabled>应用全部建议</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 生成初稿弹窗（A3） -->
+  <div id="modal-ai-gen" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>✨ 生成初稿</h3>
+      <p>描述你想做的网站，AI 生成整页初稿（将替换当前页面内容，可用撤销恢复）。</p>
+      <div class="page-form">
+        <label>网站描述</label>
+        <textarea id="ai-gen-input" rows="3" placeholder="例如：一家咖啡店的介绍页，有招牌产品、门店地址、联系方式"></textarea>
+      </div>
+      <div id="ai-gen-loading" hidden>生成中…（需要一点时间）</div>
+      <div id="ai-gen-result"></div>
+      <div class="modal-actions">
+        <button id="ai-gen-cancel" class="btn ghost">关闭</button>
+        <button id="ai-gen-apply" class="btn primary" disabled>替换当前页面</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 代码视图弹窗（P1-2） -->
+  <div id="modal-code" class="modal-mask" hidden>
+    <div class="modal modal-code">
+      <h3>代码视图</h3>
+      <p>查看 / 编辑当前页面的 HTML。修改后点"应用"同步到画布（可撤销）。</p>
+      <textarea id="code-input" class="code-input" spellcheck="false"></textarea>
+      <div class="modal-actions">
+        <button id="code-refresh" class="btn ghost">重新读取</button>
+        <button id="code-close" class="btn ghost">关闭</button>
+        <button id="code-apply" class="btn primary">应用代码</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Key 设置弹窗 -->
+  <div id="modal-ai-key" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>AI 模型设置</h3>
+      <p>选服务商 → 填 API Key → 选模型。主流厂商都兼容同一套接口，随时可换。</p>
+      <div class="page-form">
+        <label>服务商</label>
+        <select id="ai-key-provider"></select>
+        <label id="ai-endpoint-label" hidden>接口地址（仅自定义需要）</label>
+        <input type="text" id="ai-key-endpoint" placeholder="https://…/v1/chat/completions" hidden>
+        <label>模型</label>
+        <input type="text" id="ai-key-model" list="ai-model-list" placeholder="deepseek-chat">
+        <datalist id="ai-model-list"></datalist>
+        <label>API Key</label>
+        <input type="password" id="ai-key-input" placeholder="粘贴服务商的 API Key">
+        <div class="ai-key-hint" id="ai-key-hint"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="ai-key-cancel" class="btn ghost">取消</button>
+        <button id="ai-key-save" class="btn primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 助手遮罩 -->
+  <div id="ai-panel-mask" hidden></div>
+  <!-- AI 助手侧边栏（VS Code 式） -->
+  <aside id="ai-panel">
+    <div class="ai-head">
+      <span class="ai-title">AI 助手</span>
+      <span class="ai-tools">
+        <button id="ai-key" title="设置 API Key">⚙</button>
+        <button id="ai-close" title="关闭">✕</button>
+      </span>
+    </div>
+    <div class="ai-context" id="ai-context"></div>
+    <div class="ai-toolbar">
+      <button id="ai-tool-color" title="智能配色：一句话生成整套配色方案">🎨 配色</button>
+      <button id="ai-tool-diag" title="设计诊断：AI 分析排版/间距/配色并给出可应用建议">🔍 诊断</button>
+      <button id="ai-tool-gen" title="生成初稿：输入描述，AI 生成整页初稿">✨ 初稿</button>
+    </div>
+    <div class="ai-msgs" id="ai-msgs"></div>
+    <div class="ai-chips" id="ai-chips">
+      <button class="chip" data-prompt="把选中的组件改成深色风格">选中组件变深色</button>
+      <button class="chip" data-prompt="在页面末尾插入一个 3 栏功能介绍区">加 3 栏功能块</button>
+      <button class="chip" data-prompt="给整个页面换一个更有设计感的配色">整页换配色</button>
+    </div>
+    <div class="ai-input-row">
+      <textarea id="ai-input" rows="2" placeholder="告诉 AI 想做什么，例如：把选中的按钮改成蓝色胶囊…"></textarea>
+      <button id="ai-send" title="发送">➤</button>
+    </div>
+  </aside>
+
+  <!-- 画布缩放控件 -->
+  <div id="canvas-zoom">
+    <button id="zoom-out" title="缩小">−</button>
+    <span id="zoom-level">100%</span>
+    <button id="zoom-in" title="放大">＋</button>
+    <button id="zoom-fit" title="适应窗口">⤢</button>
+  </div>
+
+  <!-- 退出预览按钮（预览模式悬浮显示） -->
+  <button id="exit-preview" class="btn primary" hidden>退出预览 (Esc)</button>
+
+  <!-- 演示模式 UI（右下角页码 + 退出） -->
+  <div id="demo-ui" hidden>
+    <span id="demo-page">1 / 1</span>
+    <button id="demo-exit" class="btn primary">退出演示</button>
+  </div>
+
+  <!-- 演示模式页面缩略图侧栏（PPT 式，点击切换页面） -->
+  <div id="demo-thumbs" hidden></div>
+
+  <!-- 右键菜单 -->
+  <div id="context-menu" hidden></div>
+
+  <!-- 超链接弹窗 -->
+  <div id="modal-link" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>设置超链接</h3>
+      <p>输入链接地址，选中的元素将变成可点击跳转的链接。</p>
+      <div class="page-form">
+        <label>链接地址</label>
+        <input type="url" id="link-url" placeholder="https:// 或 #锚点">
+      </div>
+      <div class="modal-actions">
+        <button id="link-cancel" class="btn ghost">取消</button>
+        <button id="link-save" class="btn primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页面设置弹窗 -->
+  <div id="modal-page" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>页面设置</h3>
+      <p>这些信息会写入导出的 HTML 头部。</p>
+      <div class="page-form">
+        <label>页面标题</label>
+        <input type="text" id="page-meta-title" placeholder="页面标题">
+        <label>页面描述</label>
+        <textarea id="page-meta-desc" rows="3" placeholder="一句话描述这个页面（可选）"></textarea>
+        <label>Favicon 图标地址</label>
+        <input type="text" id="page-meta-fav" placeholder="https://…/favicon.ico（浏览器标签页小图标）">
+        <label>分享图地址（Open Graph）</label>
+        <input type="text" id="page-meta-og" placeholder="https://…/cover.jpg（微信/社交平台分享卡片）">
+        <label>页面配色</label>
+        <div class="theme-switch">
+          <label class="theme-opt"><input type="radio" name="page-theme" value="light" checked> 浅色</label>
+          <label class="theme-opt"><input type="radio" name="page-theme" value="dark"> 深色</label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost modal-close">取消</button>
+        <button id="page-save" class="btn primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
