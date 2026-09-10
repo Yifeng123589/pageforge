@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PageForge v2 · Canvas 编辑器（预览版）</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: #0d0d0f; color: #e8e8ec; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; overflow: hidden; }
+  #v2-bar { display: flex; gap: 10px; align-items: center; padding: 9px 14px; background: #141419; border-bottom: 1px solid #2c2c33; flex-shrink: 0; font-size: 13px; }
+  #v2-bar a { color: #8a8a94; text-decoration: none; padding: 5px 10px; border-radius: 8px; }
+  #v2-bar a:hover { color: #e8e8ec; background: #1e1e24; }
+  .sep { width: 1px; height: 18px; background: #2c2c33; }
+  .flex1 { flex: 1; }
+  .tb-lab { color: #8a8a94; }
+  button { background: #1e1e24; color: #e8e8ec; border: 1px solid #2c2c33; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 12.5px; font-family: inherit; }
+  button:hover { border-color: #4f46e5; }
+  button.primary { background: #4f46e5; border-color: #4f46e5; }
+  button.primary:hover { background: #5b54f0; }
+  select { background: #1e1e24; color: #e8e8ec; border: 1px solid #2c2c33; border-radius: 8px; padding: 5px 8px; font-size: 12.5px; font-family: inherit; }
+  #v2-zoom-label { min-width: 42px; text-align: center; color: #8a8a94; }
+  #v2-viewport { flex: 1; overflow: auto; padding: 40px; }
+  #v2-stage { position: relative; transform-origin: top left; box-shadow: 0 12px 48px rgba(0,0,0,.5); }
+  /* 元素 */
+  #v2-stage .v2-el { cursor: move; user-select: none; }
+  #v2-stage .v2-el.hov { outline: 2px dashed rgba(99, 102, 241, .65); outline-offset: -1px; cursor: move; }
+  #v2-stage .v2-el.sel { outline: 2px solid #6366f1; outline-offset: -1px; }
+  #v2-stage .v2-el.overflow { box-shadow: inset 0 0 0 2px rgba(245, 158, 11, .85); }
+  #v2-stage .v2-el img { pointer-events: none; }
+  /* 八点手柄 */
+  .v2-h { position: absolute; width: 10px; height: 10px; background: #fff; border: 2px solid #6366f1; border-radius: 50%; z-index: 99999; }
+  .v2-h[data-handle="nw"] { left: -6px; top: -6px; cursor: nwse-resize; }
+  .v2-h[data-handle="n"]  { left: calc(50% - 5px); top: -6px; cursor: ns-resize; }
+  .v2-h[data-handle="ne"] { right: -6px; top: -6px; cursor: nesw-resize; }
+  .v2-h[data-handle="e"]  { right: -6px; top: calc(50% - 5px); cursor: ew-resize; }
+  .v2-h[data-handle="se"] { right: -6px; bottom: -6px; cursor: nwse-resize; }
+  .v2-h[data-handle="s"]  { left: calc(50% - 5px); bottom: -6px; cursor: ns-resize; }
+  .v2-h[data-handle="sw"] { left: -6px; bottom: -6px; cursor: nesw-resize; }
+  .v2-h[data-handle="w"]  { left: -6px; top: calc(50% - 5px); cursor: ew-resize; }
+  /* 吸附参考线 */
+  .v2-guides { position: absolute; inset: 0; pointer-events: none; z-index: 99998; }
+  .v2-gx { position: absolute; top: -2000px; bottom: -2000px; width: 1px; background: #ff4d8d; }
+  .v2-gy { position: absolute; left: -2000px; right: -2000px; height: 1px; background: #ff4d8d; }
+</style>
+</head>
+<body>
+  <header id="v2-bar">
+    <a href="./index.html" title="返回 v1 编辑器">← v1</a>
+    <span class="sep"></span>
+    <span class="tb-lab">添加：</span>
+    <button data-add="cta">行动横幅</button>
+    <button data-add="features3">三栏特性</button>
+    <button data-add="footer">页脚</button>
+    <span class="sep"></span>
+    <button id="v2-undo" title="撤销 (Ctrl+Z)">↶</button>
+    <button id="v2-redo" title="恢复 (Ctrl+Y)">↷</button>
+    <span class="sep"></span>
+    <span class="tb-lab">画布：</span>
+    <select id="v2-preset">
+      <option value="1440x900" selected>演示 1440×900</option>
+      <option value="1080x1440">海报 1080×1440</option>
+    </select>
+    <span class="sep"></span>
+    <button id="v2-zoom-out">−</button>
+    <span id="v2-zoom-label">100%</span>
+    <button id="v2-zoom-in">＋</button>
+    <button id="v2-fit">适配</button>
+    <span class="flex1"></span>
+    <span class="tb-lab">v2 垂直切片 · 预览版</span>
+    <button id="v2-export" class="primary">导出 HTML</button>
+  </header>
+  <div id="v2-viewport">
+    <div id="v2-stage"></div>
+  </div>
+  <script type="module" src="/src/v2/main.js"></script>
+</body>
+</html>

@@ -268,6 +268,27 @@ const mm = await evalPage(`(() => {
 const mv = JSON.parse(mm);
 check('多模型适配', mv.okTable && mv.okZhipu && mv.okFallback && mv.okCustom);
 
+// 3.13 ACE 桥：本地估算 / 实际回写校准 / 记忆包互通（免费模型成本应为 0）
+const aceOk = await evalPage(`(() => {
+  const A = window.__pageforge.ace;
+  localStorage.removeItem('pageforge-ace-memory-v1');
+  const est = A.estimateCall('加一个三栏特性区，标题为什么选我们', 'chat', 'glm-4-flash-250414');
+  const okEst = est.inTok > 0 && est.outTok > 0 && est.costUsd === 0 && est.complexity === 'medium';
+  A.recordActual({ task: 'rg1', action: 'chat', model: 'glm-4-flash-250414', est, usage: { prompt_tokens: 300, completion_tokens: 200, total_tokens: 500 }, elapsedSec: 3 });
+  A.recordActual({ task: 'rg2', action: 'chat', model: 'glm-4-flash-250414', est, usage: { prompt_tokens: 360, completion_tokens: 240, total_tokens: 600 }, elapsedSec: 3.5 });
+  const st = A.state();
+  const cal = st.calibration.medium.token_multiplier;
+  const bundle = A.exportBundle();
+  const round = bundle.version === '1.2' && !!bundle.model_prices['glm-4-flash-250414'] && bundle.history.length >= 2;
+  localStorage.removeItem('pageforge-ace-memory-v1');
+  A.importBundle(JSON.stringify(bundle));
+  const st2 = A.state();
+  localStorage.removeItem('pageforge-ace-memory-v1');
+  return JSON.stringify({ okEst, calibrated: cal !== 1, round, reimported: st2.history >= 2 && st2.models >= 7 });
+})()`);
+const av = JSON.parse(aceOk);
+check('ACE 成本桥', av.okEst && av.calibrated && av.round && av.reimported);
+
 // 3.10 运行期无报错
 await sleep(500);
 check('无 JS 运行时错误', jsErrors.length === 0, jsErrors.slice(0, 3).join(' | '));

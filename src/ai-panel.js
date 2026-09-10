@@ -1,9 +1,13 @@
 // PageForge AI 助手（VS Code 式：侧边栏聊天 + 上下文感知 + 执行操作）
-// 依赖 DeepSeek API（OpenAI 兼容），CORS 已确认允许 file://
+// 依赖 AI 服务商（OpenAI 兼容协议，多模型可切换）
 //
 // ============ 块协议层（飞轮主循环）============
 // 优先级：规则层零 token 直取 → 模型按块目录 insert_block（~30 tok）→ 目录 miss 才裸 HTML（记缺口日志）
+// 模式解耦：所有画布操作经 EditorAdapter（flow=包 GrapesJS / canvas=包 v2 store），本文件不直接触碰画布实现
 import { blocks } from './blocks.js';
+import * as Ace from './ace-bridge.js';
+import { buildBlockHTML, createFlowAdapter, flowUndoBatch } from './editor-adapter.js';
+export { buildBlockHTML };
 
 const AI_API = 'https://api.deepseek.com/chat/completions';
 const AI_MODEL = 'deepseek-chat';
@@ -66,42 +70,6 @@ export function matchRule(text) {
   return def ? { id: hit.id, def } : null;
 }
 
-// ---------- 填槽：data-pf-slot 标记 → 模型给的值（缺省保留块默认文案）----------
-export function buildBlockHTML(def, slots = {}) {
-  let html = def.content;
-  const ai = def.ai;
-  if (ai?.slots) {
-    const doc = new DOMParser().parseFromString(`<div id="__pf_root">${html}</div>`, 'text/html');
-    const root = doc.getElementById('__pf_root');
-    root.querySelectorAll('[data-pf-slot]').forEach((el) => {
-      const key = el.getAttribute('data-pf-slot');
-      const sch = ai.slots[key];
-      const v = slots?.[key];
-      if (sch && typeof v === 'string' && v.trim()) el.textContent = v.trim().slice(0, sch.max || 60);
-      el.removeAttribute('data-pf-slot');
-    });
-    // items 槽：容器 data-pf-items，子项按顺序填"名称：描述"
-    const itemsEl = root.querySelector('[data-pf-items]');
-    if (itemsEl && ai.slots.items) {
-      const arr = Array.isArray(slots.items) ? slots.items : [];
-      [...itemsEl.children].forEach((col, i) => {
-        const raw = typeof arr[i] === 'string' ? arr[i].trim() : '';
-        if (!raw) return;
-        const seg = raw.split(/[：:]/);
-        const h3 = col.querySelector('h3');
-        const p = col.querySelector('p');
-        if (seg.length >= 2) {
-          if (h3) h3.textContent = seg[0].trim().slice(0, 12);
-          if (p) p.textContent = seg.slice(1).join('：').trim().slice(0, 50);
-        } else if (h3) h3.textContent = raw.slice(0, 12);
-      });
-      itemsEl.removeAttribute('data-pf-items');
-    }
-    html = root.innerHTML;
-  }
-  return html;
-}
-
 // ---------- 块目录（注入系统提示）----------
 function buildCatalogText() {
   const full = blocks.filter((b) => b.ai).map((b) => {
@@ -125,7 +93,9 @@ function logGap(q, head) {
   } catch { /* 存储满忽略 */ }
 }
 
-export function initAIPanel({ editor, toast }) {
+export function initAIPanel({ editor, toast, adapter }) {
+  // 画布操作统一走 EditorAdapter（未注入时回落 flow 适配器）
+  const ad = adapter || createFlowAdapter(editor);
   const panel = $('#ai-panel');
   const mask = $('#ai-panel-mask');
   const btn = $('#btn-ai');
@@ -150,24 +120,18 @@ export function initAIPanel({ editor, toast }) {
   mask.addEventListener('click', () => setPanelOpen(false));
   $('#ai-close').addEventListener('click', () => setPanelOpen(false));
 
-  // 上下文：选中组件变化 → 更新提示条
+  // 上下文：选中组件变化 → 更新提示条（经 adapter，模式无关）
   function updateContext() {
-    const sel = editor.getSelected();
+    const sel = ad.getSelection();
     if (sel) {
-      const tag = sel.get('tagName') || 'div';
-      const text = (sel.get('content') || sel.get('components')?.toHTML?.() || '').replace(/<[^>]+>/g, '').trim().slice(0, 20);
-      ctxBar.innerHTML = `已选中：<b>&lt;${tag.toLowerCase()}&gt;</b> ${text ? '「' + text + '」' : ''}<span class="ctx-hint">（作用于选中组件）</span>`;
+      ctxBar.innerHTML = `已选中：<b>&lt;${sel.tagName}&gt;</b> ${sel.text ? '「' + sel.text + '」' : ''}<span class="ctx-hint">（作用于选中组件）</span>`;
     } else {
       ctxBar.innerHTML = `未选中组件 <span class="ctx-hint">（AI 将作用于整个页面 / 解答问题）</span>`;
     }
   }
-  editor.on('component:selected', updateContext);
-  editor.on('component:deselected', updateContext);
+  // 选中变化 → 提示条 + chips 同步（一个订阅 covers select/deselect）
+  ad.onSelect(() => { updateContext(); renderChips(); });
   updateContext();
-  // P1-3：选中变化时 chips 同步切换
-  function updateContextAndChips() { updateContext(); renderChips(); }
-  editor.on('component:selected', updateContextAndChips);
-  editor.on('component:deselected', updateContextAndChips);
 
   // 快捷提示（P1-3：按选中元素类型动态切换）
   const CHIP_SETS = {
@@ -207,8 +171,7 @@ export function initAIPanel({ editor, toast }) {
   function renderChips() {
     const chipBox = $('#ai-chips');
     if (!chipBox) return;
-    const sel = editor.getSelected();
-    const tag = sel ? (sel.get('tagName') || '').toLowerCase() : '';
+    const tag = (ad.getSelection()?.tagName || '').toLowerCase();
     const type = chipTypeFor(tag);
     const set = CHIP_SETS[type] || CHIP_SETS.none;
     chipBox.innerHTML = set
@@ -238,35 +201,32 @@ export function initAIPanel({ editor, toast }) {
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
+  const fmtTok = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n)));
+  function addAceChip(text) {
+    const div = document.createElement('div');
+    div.className = 'ace-chip';
+    div.textContent = text;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  // ACE 开关（💰）：开 = 每次模型调用前本地估算、响应后记实际用量并校准
+  function aceOn() { return !!getAIConfig().aceEstimate; }
+  function syncAceToggle() { $('#ai-ace').classList.toggle('on', aceOn()); }
+  $('#ai-ace').addEventListener('click', () => {
+    setAIConfig({ aceEstimate: !aceOn() });
+    syncAceToggle();
+    toast(aceOn() ? '已开启：发送前显示本地成本估算' : '已关闭成本估算');
+  });
 
   // AI 的一次画布修改 = 撤销栈里的一个整体单元。
-  // GrapesJS 异步解析会把一次操作拆成多条撤销动作；等入栈稳定后，
-  // 把这批新动作的 magicFusionIndex 改写成同一值，一次 undo/redo 即整体生效
-  let aiOpSeq = 0;
-  function asOneUndoStep(mutate) {
-    const um = editor.UndoManager;
-    const stack = um.getStack();
-    const from = stack.length;
-    mutate();
-    let lastLen = -1, tries = 0;
-    const merge = () => {
-      if (stack.length !== lastLen && tries++ < 10) { lastLen = stack.length; setTimeout(merge, 60); return; }
-      const group = 'ai-' + (++aiOpSeq);
-      for (let i = from; i < stack.length; i++) stack.at(i)?.set('magicFusionIndex', group);
-    };
-    setTimeout(merge, 60);
-  }
+  // 撤销打包已随 EditorAdapter 迁移：flow=flowUndoBatch（magicFusionIndex 合并）/ canvas=snapshot
 
   // 构建系统提示词（无选中 = 目录拼装协议；选中 = 改样式/替换）
   function pageOutline() {
-    try {
-      const n = editor.getComponents().length;
-      const text = editor.getHtml().replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
-      return `${n} 个顶层块。文字摘要：${text || '（空页）'}`;
-    } catch { return '（空页）'; }
+    return ad.getPageText();
   }
   function buildSystem() {
-    const sel = editor.getSelected();
+    const sel = ad.getSelection();
     if (!sel) {
       // —— 无选中：块目录拼装协议（飞轮主循环，省 token 路径）——
       return `你是 PageForge 可视化网页拼装助手，用户不懂代码。优先用「块目录」拼装，不要自己写 HTML——只有目录确实没有合适的块才自由生成。
@@ -283,9 +243,9 @@ ${buildCatalogText()}
     }
     // —— 选中：改样式 / 整体替换（原逻辑）——
     let html = '';
-    try { html = editor.getHtml().replace(/<body[^>]*>|<\/body>/g, '').slice(0, 4000); } catch { html = ''; }
+    try { html = ad.getPageHTML().slice(0, 4000); } catch { html = ''; }
     let selHtml = '';
-    try { selHtml = sel.toHTML().slice(0, 2000); } catch { selHtml = ''; }
+    try { selHtml = ad.getSelectionHTML().slice(0, 2000); } catch { selHtml = ''; }
     return `你是 PageForge 网页设计助手，用中文交流。用户正在用可视化编辑器"拼乐高"式地做网页（不懂代码）。
 当前页面内容（body 内 HTML）：
 ${html || '（空页面）'}
@@ -315,11 +275,15 @@ ${selHtml || '（未选中）'}
     // 规则层：插入类请求且命中高频块 → 零 token 直取（不进模型）
     const rule = matchRule(text);
     if (rule) {
-      asOneUndoStep(() => editor.addComponents(buildBlockHTML(rule.def, {})));
+      ad.placeBlock(rule.def, {});
       addActionNote(`已插入「${rule.def.label}」（目录直取，未调用 AI）——点画布可直接改字`);
       return;
     }
     const waiting = addMsg('ai', '思考中…');
+    const aceCtx = aceOn() ? { est: Ace.estimateCall(text, 'chat', activeAI().model, 400), t0: Date.now() } : null;
+    if (aceCtx) {
+      addAceChip(`💰 预估 ~${fmtTok(aceCtx.est.inTok + aceCtx.est.outTok)} tok · $${aceCtx.est.costUsd.toFixed(4)} · ~${aceCtx.est.timeSec}s（本地估算${aceCtx.est.priced ? '' : ' · 默认价，可导入 ACE 记忆包校准'}）`);
+    }
     try {
       const key = getKey();
       if (!key) {
@@ -347,6 +311,11 @@ ${selHtml || '（未选中）'}
         return;
       }
       const data = await res.json();
+      // ACE：真实用量回写校准（usage 由 OpenAI 兼容响应自带）
+      if (aceCtx) {
+        const act = Ace.recordActual({ task: text, action: 'chat', model: ai.model, est: aceCtx.est, usage: data.usage, elapsedSec: (Date.now() - aceCtx.t0) / 1000 });
+        if (data.usage) addAceChip(`💰 实际 ${fmtTok(data.usage.total_tokens)} tok · $${(act.actual.cost_usd || 0).toFixed(4)} · ${act.actual.time_seconds}s`);
+      }
       const reply = data.choices?.[0]?.message?.content || '';
       // 解析 JSON（容错：剥离 ```json 代码块）
       let json = null;
@@ -357,18 +326,14 @@ ${selHtml || '（未选中）'}
         waiting.textContent = reply || '（AI 无回复）';
         return;
       }
-      // 执行操作
+      // 执行操作（全部经 EditorAdapter，模式无关）
       try {
         if (json.action === 'style') {
-          const sel = editor.getSelected();
-          if (!sel) { waiting.textContent = '请先选中一个组件，再让我改样式。'; return; }
-          asOneUndoStep(() => sel.setStyle(parseCss(json.css || '')));
+          ad.applyStyleToSelection(parseCss(json.css || ''));
           addActionNote(json.reason || '已应用样式');
           waiting.remove();
         } else if (json.action === 'replace') {
-          const sel = editor.getSelected();
-          if (!sel) { waiting.textContent = '请先选中一个组件，再让我替换。'; return; }
-          asOneUndoStep(() => sel.replaceWith(json.html));
+          ad.replaceSelection(json.html);
           addActionNote(json.reason || '已替换组件');
           waiting.remove();
         } else if (json.action === 'insert_block') {
@@ -380,12 +345,12 @@ ${selHtml || '（未选中）'}
             waiting.textContent = `目录里没有「${key}」这个块。换个说法，或让我自由生成。`;
             return;
           }
-          asOneUndoStep(() => editor.addComponents(buildBlockHTML(def, json.slots || {})));
+          ad.placeBlock(def, json.slots || {});
           addActionNote(`${json.reason || '已插入区块'}（块「${def.label}」·目录命中）`);
           waiting.remove();
         } else if (json.action === 'insert') {
           // 目录 miss：自由生成（贵）——记入缺口日志，供结晶环提炼新块
-          asOneUndoStep(() => editor.addComponents(json.html));
+          ad.insertFreeHTML(json.html);
           logGap(text, json.html);
           addActionNote(`${json.reason || '已在页面末尾插入区块'}（自由生成·已记缺口日志）`);
           waiting.remove();
@@ -443,6 +408,7 @@ ${selHtml || '（未选中）'}
     document.getElementById('ai-key-model').value = cfg.model || prov?.model || '';
     document.getElementById('ai-key-input').value = cfg.apiKey || localStorage.getItem('pageforge-ai-key') || '';
     document.getElementById('ai-key-endpoint').value = cfg.endpoint || '';
+    refreshAceStatus();
     document.getElementById('modal-ai-key').hidden = false;
     setTimeout(() => document.getElementById('ai-key-input').focus(), 60);
   }
@@ -467,14 +433,46 @@ ${selHtml || '（未选中）'}
   });
   $('#ai-key').addEventListener('click', openKeyPrompt);
 
+  // ACE 校准区（设置弹窗内）：记忆包与 AgentCostEstimator 互通
+  function refreshAceStatus() {
+    const s = Ace.state();
+    $('#ace-status').textContent = `价格表 ${s.models} 个模型 · 校准历史 ${s.history} 条 · 与 AgentCostEstimator 记忆包互通`;
+  }
+  $('#ace-import-btn').addEventListener('click', () => document.getElementById('ace-import-file').click());
+  document.getElementById('ace-import-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const r = Ace.importBundle(reader.result);
+        toast(`已导入：${r.prices} 个模型价格 · 追加 ${r.appended} 条历史`);
+        refreshAceStatus();
+      } catch (err) { toast('导入失败：' + err.message, true); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+  $('#ace-export-btn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(Ace.exportBundle(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'pageforge_ace_memory_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+  syncAceToggle();
+  refreshAceStatus();
+
   // ============ AI 层 A1/A2/A3：公共 AI 请求 ============
-  async function aiRequest(system, user, maxTokens = 1600) {
+  async function aiRequest(system, user, maxTokens = 1600, action = 'diag') {
     const key = getKey();
     if (!key) {
       openKeyPrompt();
       throw new Error('NO_KEY');
     }
     const ai = activeAI();
+    const aceCtx = aceOn() ? { est: Ace.estimateCall(user, action, ai.model, system.length), t0: Date.now() } : null;
     const res = await fetch(ai.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
@@ -493,13 +491,15 @@ ${selHtml || '（未选中）'}
       throw new Error('请求失败（' + res.status + '）：' + (errText.slice(0, 200) || '请检查网络/Key'));
     }
     const data = await res.json();
+    if (aceCtx) Ace.recordActual({ task: user, action, model: ai.model, est: aceCtx.est, usage: data.usage, elapsedSec: (Date.now() - aceCtx.t0) / 1000 });
     const reply = data.choices?.[0]?.message?.content || '';
     const m = reply.match(/```(?:json)?\s*([\s\S]*?)```/);
     const candidate = m ? m[1] : reply;
     try {
       return JSON.parse(candidate.trim());
     } catch {
-      throw new Error('AI 回复无法解析：' + reply.slice(0, 150));
+      // 常见原因：max_tokens 截断（回复在 JSON 中途断掉）
+      throw new Error('AI 回复无法解析（若内容较长可能是输出被截断，请重试或精简描述）：' + reply.slice(0, 150));
     }
   }
 
@@ -529,7 +529,7 @@ ${selHtml || '（未选中）'}
     try {
       const json = await aiRequest(
         '你是资深 UI 配色设计师。根据用户描述生成一套网页配色方案，只回复一个 JSON 对象：\n{"name":"方案名","palette":{"primary":"主色 hex","secondary":"辅色 hex","accent":"强调色 hex（按钮/链接用）","bg":"页面背景 hex（浅色）","text":"正文文字 hex（深色）"},"advice":"一两句应用建议"}\n颜色要和谐有设计感，全部 hex 小写。不要其他文字。',
-        prompt
+        prompt, 1600, 'color'
       );
       if (!json.palette) throw new Error('回复缺少 palette');
       lastPalette = json;
@@ -547,7 +547,7 @@ ${selHtml || '（未选中）'}
   function applyPaletteToPage() {
     if (!lastPalette || !lastPalette.palette) return;
     const p = lastPalette.palette;
-    asOneUndoStep(() => {
+    flowUndoBatch(editor, () => {
       // 组件样式在 CssComposer 规则（avoidInlineStyle），走 iframe 渲染层 + 规则修改（fixContrast 同款）
       try {
         const doc = editor.Canvas.getFrameEl().contentDocument;
@@ -606,7 +606,8 @@ ${selHtml || '（未选中）'}
     try {
       const json = await aiRequest(
         '你是资深网页设计师，做设计诊断。分析用户页面的排版/间距/配色/可读性问题，只回复一个 JSON 对象：\n{"items":[{"title":"建议标题（短）","reason":"为什么/问题描述（一句话）","selector":"CSS 选择器（用标签名如 h1、p、section 或现有类名）","css":"修复用的纯 CSS 声明，如 padding:24px 0;line-height:1.8;color:#334155;"}]}\n3-5 条建议；css 只含声明（不含选择器）；只建议修改样式，不增删内容。',
-        '当前页面 HTML：\n' + (html || '（空）') + '\n\n当前 CSS：\n' + (css || '（无）')
+        '当前页面 HTML：\n' + (html || '（空）') + '\n\n当前 CSS：\n' + (css || '（无）'),
+        1600, 'diag'
       );
       lastDiagItems = Array.isArray(json.items) ? json.items : [];
       if (!lastDiagItems.length) throw new Error('回复缺少建议');
@@ -624,7 +625,7 @@ ${selHtml || '（未选中）'}
   }
   function applyDiagItems() {
     let applied = 0;
-    asOneUndoStep(() => {
+    flowUndoBatch(editor, () => {
       lastDiagItems.forEach((it) => {
         if (!it.css || !it.selector) return;
         try {
@@ -641,12 +642,24 @@ ${selHtml || '（未选中）'}
   // ============ A3 生成初稿 ============
   const genModal = $('#modal-ai-gen');
   let lastDraft = null;
+  // 三态状态机：input=等待描述（生成钮亮/替换钮灰）→ busy=生成中 → ready=有初稿（替换钮变主按钮）
+  function setGenState(state) {
+    const doBtn = $('#ai-gen-do'), applyBtn = $('#ai-gen-apply');
+    const hasResult = state === 'ready';
+    doBtn.disabled = state === 'busy';
+    doBtn.textContent = state === 'busy' ? '生成中…' : (hasResult ? '重新生成' : '生成初稿');
+    doBtn.className = 'btn ' + (hasResult ? 'ghost' : 'primary');
+    applyBtn.disabled = !hasResult;
+    applyBtn.className = 'btn ' + (hasResult ? 'primary' : 'ghost');
+    applyBtn.title = hasResult ? '用初稿替换当前页面（Ctrl+Z 可撤销）' : '先点「生成初稿」，满意后再替换';
+  }
   $('#ai-tool-gen').addEventListener('click', () => {
     $('#ai-gen-result').innerHTML = '';
-    $('#ai-gen-apply').disabled = true;
+    setGenState('input');
     genModal.hidden = false;
     setTimeout(() => $('#ai-gen-input').focus(), 60);
   });
+  $('#ai-gen-do').addEventListener('click', generateDraft);
   $('#ai-gen-cancel').addEventListener('click', () => { genModal.hidden = true; });
   $('#ai-gen-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generateDraft(); }
@@ -654,12 +667,13 @@ ${selHtml || '（未选中）'}
   async function generateDraft() {
     const prompt = $('#ai-gen-input').value.trim();
     if (!prompt) { toast('请先描述你想做的网站'); return; }
+    setGenState('busy');
     $('#ai-gen-loading').hidden = false;
     $('#ai-gen-result').innerHTML = '';
     try {
       const json = await aiRequest(
         '你是资深网页设计师。根据用户描述生成一个完整的单页网站初稿，只回复一个 JSON 对象：\n{"title":"页面标题","html":"<body> 内的完整 HTML（导航栏+主视觉+内容区+页脚）"}\n硬性规则：全部内联 style；中文；响应式（grid auto-fit minmax(180px,1fr)）；配色克制有设计感（白底 #f5f5f7 / 深色 #0d0d0f / 一个强调色）；圆角 12-16px；导航 4-5 个链接；段落行高 1.7；区块 section 用 max-width:1100px;margin:0 auto;padding:80px 24px；不要 <style> 标签。',
-        prompt
+        prompt, 4000, 'gen'
       );
       if (!json.html) throw new Error('回复缺少 html');
       lastDraft = json;
@@ -667,26 +681,31 @@ ${selHtml || '（未选中）'}
       $('#ai-gen-result').innerHTML = `
         <div class="ai-draft-title">已生成：「${json.title || '未命名页面'}」</div>
         <div class="ai-draft-preview">${plain}…</div>`;
-      $('#ai-gen-apply').disabled = false;
+      setGenState('ready');
     } catch (e) {
       $('#ai-gen-result').innerHTML = '<div class="ai-error">' + (e.message === 'NO_KEY' ? '未配置 API Key，请先设置。' : e.message) + '</div>';
+      setGenState('input');
     }
     $('#ai-gen-loading').hidden = true;
   }
   function applyDraft() {
     if (!lastDraft || !lastDraft.html) return;
-    asOneUndoStep(() => {
-      editor.getWrapper().components().reset();
-      editor.setComponents(lastDraft.html);
-    });
+    ad.replacePage(lastDraft.html);
     toast('已生成初稿（Ctrl+Z 可撤销）');
     genModal.hidden = true;
   }
   $('#ai-gen-apply').addEventListener('click', applyDraft);
 
-  // 供回归脚本 / 控制台调用（块协议层 + 模型适配测试接口）
+  // 能力门控：canvas 等不支持的工具按 adapter.capabilities 显隐
+  for (const [id, cap] of [['#ai-tool-color', 'color'], ['#ai-tool-diag', 'diag'], ['#ai-tool-gen', 'gen']]) {
+    if (!ad.capabilities?.[cap]) { const b = $(id); if (b) b.style.display = 'none'; }
+  }
+
+  // 供回归脚本 / 控制台调用（块协议层 + 模型适配 + ACE 桥测试接口）
   Object.assign(window.__pageforge || (window.__pageforge = {}), {
     matchRule, buildBlockHTML, getGapLog, buildCatalogText,
     AI_PROVIDERS, getAIConfig, setAIConfig, activeAI,
+    ace: Ace,
+    adapter: ad,
   });
 }
