@@ -9,6 +9,7 @@ import { renderStylePresets } from './style-presets.js';
 import { initFitter } from './fitter.js';
 import { initContextMenu } from './context-menu.js';
 import { initAIPanel } from './ai-panel.js';
+import { createFlowAdapter } from './editor-adapter.js';
 import { themes } from './themes.js';
 import { assetIcons, assetImages, assetTexts } from './assets.js';
 import html2canvas from 'html2canvas';
@@ -791,7 +792,7 @@ document.addEventListener('keydown', (e) => {
 initContextMenu({ editor, toast });
 
 // ============ AI 助手（VS Code 式侧边栏）============
-initAIPanel({ editor, toast });
+initAIPanel({ editor, toast, adapter: createFlowAdapter(editor) });
 
 // 暴露给外部测试
 // ai-panel 也会往 __pageforge 挂测试接口，这里用合并赋值避免互相覆盖
@@ -1270,9 +1271,10 @@ document.getElementById('guide-close')?.addEventListener('click', () => {
 const WELCOME_KEY = 'pageforge-welcomed-v1';
 const GUIDE_KEY = 'pageforge-guide-done-v1';
 function showWelcome() { $('#welcome').hidden = false; }
-function closeWelcome(markSeen = true) {
+// 任何方式离开开屏都记"已看过"——否则点路径卡的用户每次启动都会再看到（实际踩过的 bug）
+function closeWelcome() {
   $('#welcome').hidden = true;
-  if (markSeen) localStorage.setItem(WELCOME_KEY, '1');
+  localStorage.setItem(WELCOME_KEY, '1');
 }
 function guideSeen() { return !!localStorage.getItem(GUIDE_KEY); }
 const GUIDE_STEPS = [
@@ -1293,6 +1295,7 @@ function renderGuideStep() {
 function startGuide() {
   guideIdx = 0;
   $('#guide-float').hidden = false;
+  localStorage.setItem(GUIDE_KEY, '1'); // 开始即记档：中途刷新也不重弹（"只开一次"语义）
   renderGuideStep();
 }
 function endGuide() {
@@ -1317,18 +1320,18 @@ $('#welcome').addEventListener('click', (e) => {
   }
 });
 $('#welcome-tpl').addEventListener('click', () => {
-  closeWelcome(false);
+  closeWelcome();
   localStorage.setItem(GUIDE_KEY, '1');
   $('#btn-template').click();
 });
 $('#welcome-ai').addEventListener('click', () => {
-  closeWelcome(false);
+  closeWelcome();
   localStorage.setItem(GUIDE_KEY, '1');
   document.getElementById('btn-ai').click();
   setTimeout(() => document.getElementById('ai-tool-gen')?.click(), 400);
 });
 $('#welcome-blank').addEventListener('click', () => {
-  closeWelcome(false);
+  closeWelcome();
   localStorage.setItem(GUIDE_KEY, '1');
   editor.getWrapper().components().reset();
   editor.store();

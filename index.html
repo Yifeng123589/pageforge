@@ -430,7 +430,7 @@
   <div id="modal-ai-gen" class="modal-mask" hidden>
     <div class="modal modal-wide">
       <h3>✨ 生成初稿</h3>
-      <p>描述你想做的网站，AI 生成整页初稿（将替换当前页面内容，可用撤销恢复）。</p>
+      <p>描述你想做的网站 → 点「生成初稿」→ 满意后替换当前页面（可用撤销恢复）。</p>
       <div class="page-form">
         <label>网站描述</label>
         <textarea id="ai-gen-input" rows="3" placeholder="例如：一家咖啡店的介绍页，有招牌产品、门店地址、联系方式"></textarea>
@@ -439,7 +439,8 @@
       <div id="ai-gen-result"></div>
       <div class="modal-actions">
         <button id="ai-gen-cancel" class="btn ghost">关闭</button>
-        <button id="ai-gen-apply" class="btn primary" disabled>替换当前页面</button>
+        <button id="ai-gen-do" class="btn primary">生成初稿</button>
+        <button id="ai-gen-apply" class="btn ghost" disabled title="先点「生成初稿」，满意后再替换">替换当前页面</button>
       </div>
     </div>
   </div>
@@ -474,6 +475,15 @@
         <label>API Key</label>
         <input type="password" id="ai-key-input" placeholder="粘贴服务商的 API Key">
         <div class="ai-key-hint" id="ai-key-hint"></div>
+        <div class="ace-sec">
+          <div class="ace-sec-title">💰 ACE 成本校准（可选）</div>
+          <div class="ai-key-hint" id="ace-status"></div>
+          <div class="ace-btns">
+            <button id="ace-import-btn" class="btn ghost">导入 ACE 记忆包</button>
+            <button id="ace-export-btn" class="btn ghost">导出记忆包</button>
+            <input type="file" id="ace-import-file" accept=".json" hidden>
+          </div>
+        </div>
       </div>
       <div class="modal-actions">
         <button id="ai-key-cancel" class="btn ghost">取消</button>
@@ -489,6 +499,7 @@
     <div class="ai-head">
       <span class="ai-title">AI 助手</span>
       <span class="ai-tools">
+        <button id="ai-ace" title="发送前本地估算成本（ACE 桥，零 AI 调用）">💰</button>
         <button id="ai-key" title="设置 API Key">⚙</button>
         <button id="ai-close" title="关闭">✕</button>
       </span>

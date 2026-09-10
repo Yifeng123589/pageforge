@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:single": "vite build --config vite.singlefile.config.mjs",
+    "build:single": "vite build --config vite.singlefile.config.mjs && vite build --config vite.singlefile-v2.config.mjs",
     "preview": "vite preview",
     "dist": "electron-builder --win portable",
     "regression": "node scripts/regression.mjs"
@@ -29,7 +29,8 @@
     },
     "files": [
       "electron-main.js",
-      "dist-single/index.html"
+      "dist-single/index.html",
+      "dist-single/editor-v2.html"
     ],
     "win": {
       "target": [
