@@ -1,4 +1,6 @@
-# PageForge v2 · 画布页 JSON Schema（草案 v0.1 · 待评审）
+# 【已归档】PageForge v2 · 画布页 JSON Schema（草案 v0.1 · 未采纳）
+
+> ⚠️ **本方案未采纳（2026-09-11 归档）**：ContentNode 叶子树与实现采用的「html 字符串 + overrides 覆盖表」不一致，且 stage.height 策略不同。现行规范见 `canvas-schema-draft.md`（v1.0 实现基线）。本文件仅作历史参考，**勿按此实现**。
 
 > 双模式架构的数据层设计。模式 B（flow）沿用现有 GrapesJS 工程数据，本文只定义**模式 A（canvas）**。
 > 三块样例取自现有块库：页脚 / 三栏特性区 / 渐变行动横幅。

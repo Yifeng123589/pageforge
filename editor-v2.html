@@ -15,16 +15,39 @@
   .tb-lab { color: #8a8a94; }
   button { background: #1e1e24; color: #e8e8ec; border: 1px solid #2c2c33; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-size: 12.5px; font-family: inherit; }
   button:hover { border-color: #4f46e5; }
+  button:disabled { opacity: .35; cursor: default; }
+  button:disabled:hover { border-color: #2c2c33; }
   button.primary { background: #4f46e5; border-color: #4f46e5; }
   button.primary:hover { background: #5b54f0; }
   select { background: #1e1e24; color: #e8e8ec; border: 1px solid #2c2c33; border-radius: 8px; padding: 5px 8px; font-size: 12.5px; font-family: inherit; }
   #v2-zoom-label { min-width: 42px; text-align: center; color: #8a8a94; }
-  #v2-viewport { flex: 1; overflow: auto; padding: 40px; }
+  #v2-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+  #v2-viewport { flex: 1; overflow: auto; padding: 40px; min-height: 0; }
+  /* 样式面板 */
+  #v2-style { width: 240px; flex-shrink: 0; background: #141419; border-left: 1px solid #2c2c33; padding: 14px; overflow-y: auto; font-size: 12.5px; }
+  #v2-style[hidden] { display: none; }
+  .sp-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+  .sp-sec { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #26262d; }
+  .sp-sec-t { font-weight: 700; margin-bottom: 8px; }
+  .sp-sec label, #v2-style label { display: block; color: #8a8a94; font-size: 11.5px; margin: 8px 0 3px; }
+  .sp-sec input, .sp-sec select, #v2-style input, #v2-style select {
+    width: 100%; background: #1e1e24; color: #e8e8ec; border: 1px solid #2c2c33;
+    border-radius: 7px; padding: 5px 8px; font-size: 12px; font-family: inherit;
+  }
+  .sp-sec input:focus, .sp-sec select:focus, #v2-style input:focus { outline: none; border-color: #4f46e5; }
+  #sp-leaf-color { padding: 2px; height: 30px; }
+  .sp-hint { color: #6b6b75; font-size: 11px; margin-top: 10px; }
+  #v2-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1b1b22; border: 1px solid #34343d; color: #e8e8ec; padding: 9px 16px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 70000; max-width: 80vw; }
+  #v2-toast.show { opacity: 1; }
   #v2-stage { position: relative; transform-origin: top left; box-shadow: 0 12px 48px rgba(0,0,0,.5); }
   /* 元素 */
   #v2-stage .v2-el { cursor: move; user-select: none; }
   #v2-stage .v2-el.hov { outline: 2px dashed rgba(99, 102, 241, .65); outline-offset: -1px; cursor: move; }
   #v2-stage .v2-el.sel { outline: 2px solid #6366f1; outline-offset: -1px; }
+  #v2-stage.v2-editing .v2-h { display: none; }
+  #v2-stage [contenteditable="true"] {
+    outline: 2px dashed #10b981; outline-offset: 2px; cursor: text; min-width: 8px;
+  }
   #v2-stage .v2-el.overflow { box-shadow: inset 0 0 0 2px rgba(245, 158, 11, .85); }
   #v2-stage .v2-el img { pointer-events: none; }
   /* 八点手柄 */
@@ -37,11 +60,29 @@
   .v2-h[data-handle="s"]  { left: calc(50% - 5px); bottom: -6px; cursor: ns-resize; }
   .v2-h[data-handle="sw"] { left: -6px; bottom: -6px; cursor: nesw-resize; }
   .v2-h[data-handle="w"]  { left: -6px; top: calc(50% - 5px); cursor: ew-resize; }
+  .v2-rot { position: absolute; left: calc(50% - 6px); top: -30px; width: 12px; height: 12px; background: #fff; border: 2px solid #10b981; border-radius: 50%; cursor: grab; z-index: 99999; }
+  .v2-rot::after { content: ''; position: absolute; left: 5px; top: 10px; width: 1px; height: 12px; background: rgba(16, 185, 129, .55); }
+  .v2-marquee { position: absolute; border: 1px solid #6366f1; background: rgba(99, 102, 241, .12); z-index: 99997; pointer-events: none; }
+  .v2-marquee[hidden] { display: none; }
   /* 吸附参考线 */
   .v2-guides { position: absolute; inset: 0; pointer-events: none; z-index: 99998; }
   .v2-gx { position: absolute; top: -2000px; bottom: -2000px; width: 1px; background: #ff4d8d; }
   .v2-gy { position: absolute; left: -2000px; right: -2000px; height: 1px; background: #ff4d8d; }
+  /* 右键菜单 */
+  .v2-ctx { position: fixed; z-index: 60000; min-width: 170px; background: #1b1b22; border: 1px solid #34343d; border-radius: 10px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.55); }
+  .v2-ctx[hidden] { display: none; }
+  .v2-ctx-item { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%; background: none; border: none; color: #e8e8ec; padding: 7px 10px; border-radius: 7px; font-size: 13px; cursor: pointer; text-align: left; font-family: inherit; }
+  .v2-ctx-item:hover { background: #2a2a33; }
+  .v2-ctx-item.danger { color: #f87171; }
+  .v2-ctx-hint { color: #6b6b75; font-size: 11px; }
 </style>
+  <link rel="stylesheet" href="/src/theme.css">
+  <style>
+    /* v2 覆写：工具栏保持在 AI 遮罩之上；面板顶距对齐 v2 工具栏 */
+    #v2-bar { position: relative; z-index: 15500; }
+    #ai-panel { top: 40px; }
+    #ai-panel .ai-toolbar button { font-size: 12px; }
+  </style>
 </head>
 <body>
   <header id="v2-bar">
@@ -51,9 +92,10 @@
     <button data-add="cta">行动横幅</button>
     <button data-add="features3">三栏特性</button>
     <button data-add="footer">页脚</button>
+    <button id="v2-img-btn">图片</button>
     <span class="sep"></span>
-    <button id="v2-undo" title="撤销 (Ctrl+Z)">↶</button>
-    <button id="v2-redo" title="恢复 (Ctrl+Y)">↷</button>
+    <button id="v2-undo" title="撤销 (Ctrl+Z)" disabled>↶</button>
+    <button id="v2-redo" title="恢复 (Ctrl+Y)" disabled>↷</button>
     <span class="sep"></span>
     <span class="tb-lab">画布：</span>
     <select id="v2-preset">
@@ -67,11 +109,158 @@
     <button id="v2-fit">适配</button>
     <span class="flex1"></span>
     <span class="tb-lab">v2 垂直切片 · 预览版</span>
+    <button id="btn-ai" title="AI 助手（拼块/改样式/答疑）">AI 助手</button>
     <button id="v2-export" class="primary">导出 HTML</button>
   </header>
-  <div id="v2-viewport">
-    <div id="v2-stage"></div>
+  <div id="v2-body">
+    <div id="v2-viewport">
+      <div id="v2-stage"></div>
+    </div>
+    <!-- 插入图片弹窗 -->
+    <div id="v2-img-modal" class="modal-mask" hidden>
+      <div class="modal" style="width:360px">
+        <h3>插入图片</h3>
+        <p style="font-size:12.5px">本地图片会内嵌进文档（离线可用）；大图会显著增大文件。</p>
+        <div class="page-form">
+          <label>图片地址（URL）</label>
+          <input type="text" id="v2-img-url" placeholder="https://… 或 data:…">
+          <label>或选择本地文件</label>
+          <input type="file" id="v2-img-file" accept="image/*">
+          <div class="ai-key-hint" id="v2-img-hint"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="v2-img-cancel">取消</button>
+          <button class="btn primary" id="v2-img-ok">插入</button>
+        </div>
+      </div>
+    </div>
+    <aside id="v2-style" hidden>
+      <div class="sp-title">样式</div>
+      <div class="sp-sec">
+        <div class="sp-sec-t">容器</div>
+        <label>背景</label>
+        <input data-f="background" placeholder="颜色或渐变">
+        <label>圆角</label>
+        <input data-f="borderRadius" placeholder="如 16px">
+        <label>内边距</label>
+        <input data-f="padding" placeholder="如 40px 48px">
+      </div>
+      <div class="sp-sec" id="sp-leaf-box">
+        <div class="sp-sec-t">文字叶子</div>
+        <select id="sp-leaf"></select>
+        <label>颜色</label>
+        <input type="color" id="sp-leaf-color">
+        <label>字号</label>
+        <input id="sp-leaf-size" placeholder="如 18px">
+        <label>行高</label>
+        <input id="sp-leaf-line" placeholder="如 1.7">
+      </div>
+      <div class="sp-hint">改动实时预览，Ctrl+Z 可撤销</div>
+    </aside>
   </div>
+<div id="ai-panel-mask" hidden></div>
+<aside id="ai-panel">
+    <div class="ai-head">
+      <span class="ai-title">AI 助手</span>
+      <span class="ai-tools">
+        <button id="ai-ace" title="发送前本地估算成本（ACE 桥，零 AI 调用）">💰</button>
+        <button id="ai-key" title="设置 API Key">⚙</button>
+        <button id="ai-close" title="关闭">✕</button>
+      </span>
+    </div>
+    <div class="ai-context" id="ai-context"></div>
+    <div class="ai-toolbar">
+      <button id="ai-tool-color" title="智能配色：一句话生成整套配色方案">🎨 配色</button>
+      <button id="ai-tool-diag" title="设计诊断：AI 分析排版/间距/配色并给出可应用建议">🔍 诊断</button>
+      <button id="ai-tool-gen" title="生成初稿：输入描述，AI 生成整页初稿">✨ 初稿</button>
+    </div>
+    <div class="ai-msgs" id="ai-msgs"></div>
+    <div class="ai-chips" id="ai-chips">
+      <button class="chip" data-prompt="把选中的组件改成深色风格">选中组件变深色</button>
+      <button class="chip" data-prompt="在页面末尾插入一个 3 栏功能介绍区">加 3 栏功能块</button>
+      <button class="chip" data-prompt="给整个页面换一个更有设计感的配色">整页换配色</button>
+    </div>
+    <div class="ai-input-row">
+      <textarea id="ai-input" rows="2" placeholder="告诉 AI 想做什么，例如：把选中的按钮改成蓝色胶囊…"></textarea>
+      <button id="ai-send" title="发送">➤</button>
+    </div>
+  </aside>
+<div id="modal-ai-key" class="modal-mask" hidden>
+    <div class="modal">
+      <h3>AI 模型设置</h3>
+      <p>选服务商 → 填 API Key → 选模型。主流厂商都兼容同一套接口，随时可换。</p>
+      <div class="page-form">
+        <label>服务商</label>
+        <select id="ai-key-provider"></select>
+        <label id="ai-endpoint-label" hidden>接口地址（仅自定义需要）</label>
+        <input type="text" id="ai-key-endpoint" placeholder="https://…/v1/chat/completions" hidden>
+        <label>模型</label>
+        <input type="text" id="ai-key-model" list="ai-model-list" placeholder="deepseek-chat">
+        <datalist id="ai-model-list"></datalist>
+        <label>API Key</label>
+        <input type="password" id="ai-key-input" placeholder="粘贴服务商的 API Key">
+        <div class="ai-key-hint" id="ai-key-hint"></div>
+        <div class="ace-sec">
+          <div class="ace-sec-title">💰 ACE 成本校准（可选）</div>
+          <div class="ai-key-hint" id="ace-status"></div>
+          <div class="ace-btns">
+            <button id="ace-import-btn" class="btn ghost">导入 ACE 记忆包</button>
+            <button id="ace-export-btn" class="btn ghost">导出记忆包</button>
+            <input type="file" id="ace-import-file" accept=".json" hidden>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="ai-key-cancel" class="btn ghost">取消</button>
+        <button id="ai-key-save" class="btn primary">保存</button>
+      </div>
+    </div>
+  </div>
+<div id="modal-ai-color" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>🎨 智能配色</h3>
+      <p>描述你想要的风格，AI 生成整套配色方案（如：清爽的海洋风、复古胶片感）。</p>
+      <div class="page-form">
+        <label>配色风格描述</label>
+        <input type="text" id="ai-color-input" placeholder="例如：温暖治愈的奶茶色 / 科技感的深蓝紫">
+      </div>
+      <div id="ai-color-result"></div>
+      <div class="modal-actions">
+        <button id="ai-color-cancel" class="btn ghost">关闭</button>
+        <button id="ai-color-apply" class="btn primary" disabled>应用到页面</button>
+      </div>
+    </div>
+  </div>
+<div id="modal-ai-diag" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>🔍 设计诊断</h3>
+      <p>AI 分析当前页面的排版 / 间距 / 配色，给出可一键应用的建议。</p>
+      <div id="ai-diag-loading" hidden>分析中…（需要一点时间）</div>
+      <div id="ai-diag-result"></div>
+      <div class="modal-actions">
+        <button id="ai-diag-cancel" class="btn ghost">关闭</button>
+        <button id="ai-diag-apply-all" class="btn primary" disabled>应用全部建议</button>
+      </div>
+    </div>
+  </div>
+<div id="modal-ai-gen" class="modal-mask" hidden>
+    <div class="modal modal-wide">
+      <h3>✨ 生成初稿</h3>
+      <p>描述你想做的网站 → 点「生成初稿」→ 满意后替换当前页面（可用撤销恢复）。</p>
+      <div class="page-form">
+        <label>网站描述</label>
+        <textarea id="ai-gen-input" rows="3" placeholder="例如：一家咖啡店的介绍页，有招牌产品、门店地址、联系方式"></textarea>
+      </div>
+      <div id="ai-gen-loading" hidden>生成中…（需要一点时间）</div>
+      <div id="ai-gen-result"></div>
+      <div class="modal-actions">
+        <button id="ai-gen-cancel" class="btn ghost">关闭</button>
+        <button id="ai-gen-do" class="btn primary">生成初稿</button>
+        <button id="ai-gen-apply" class="btn ghost" disabled title="先点「生成初稿」，满意后再替换">替换当前页面</button>
+      </div>
+    </div>
+  </div>
+<div id="toast" class="toast" hidden></div>
   <script type="module" src="/src/v2/main.js"></script>
 </body>
 </html>

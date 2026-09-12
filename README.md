@@ -67,4 +67,4 @@ npm run regression # 20 项端到端回归（自起 headless Edge）
 
 ## License
 
-暂未设置，计划以 MIT 开源。
+MIT —— 见 [LICENSE](LICENSE)。

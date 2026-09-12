@@ -27,6 +27,70 @@ const AI_PROVIDERS = [
 ];
 
 const AI_CFG_KEY = 'pageforge-ai-config-v1';
+
+// ---------- 结构化输出：response_format 强制 JSON（问题三修复）----------
+// DeepSeek/智谱等主流厂商均支持 json_object 模式；不支持的服务商 400 时自动去掉该参数重试一次
+async function chatCompletion(ai, key, messages, maxTokens) {
+  const base = {
+    model: ai.model,
+    messages,
+    max_tokens: maxTokens,
+    temperature: 0.6,
+  };
+  const call = (withFormat) => fetch(ai.endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify(withFormat ? { ...base, response_format: { type: 'json_object' } } : base),
+  });
+  let res = await call(true);
+  if (res.status === 400) {
+    // 可能是服务商不支持 response_format → 降级重试
+    res = await call(false);
+  }
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error('请求失败（' + res.status + '）：' + (errText.slice(0, 200) || '请检查网络/Key'));
+  }
+  return res.json();
+}
+
+// ---------- JSON 抢救解析（弱模型输出不规范的兜底）----------
+// 处理三类常见故障：1) 围栏没闭合 2) JSON 前后带杂文本 3) 输出中途被截断（补齐未闭合的字符串/括号）
+function tryParseJSON(s) {
+  try { return JSON.parse(String(s).trim()); } catch { return null; }
+}
+export function parseAIJson(reply) {
+  const raw = String(reply || '');
+  let t = raw.trim();
+  let j = tryParseJSON(t);
+  if (j) return j;
+  // 剥掉成对或未闭合的 markdown 围栏
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  j = tryParseJSON(t);
+  if (j) return j;
+  // 截取首个 { 到末尾，再尝试
+  const a = t.indexOf('{');
+  if (a < 0) return null;
+  t = t.slice(a);
+  j = tryParseJSON(t);
+  if (j) return j;
+  // 截断补齐：扫描字符串/括号深度，补齐缺失的引号与闭合括号
+  let depth = 0, inStr = false, esc = false;
+  for (const ch of t) {
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') inStr = !inStr;
+    if (!inStr && (ch === '{' || ch === '[')) depth++;
+    if (!inStr && (ch === '}' || ch === ']')) depth--;
+  }
+  let fixed = t;
+  if (inStr) fixed += '"';
+  fixed = fixed.replace(/[,:\s]+$/, '');
+  for (let i = 0; i < depth; i++) fixed += '}';
+  j = tryParseJSON(fixed);
+  if (j) { console.warn('[PageForge AI] 回复疑似截断，已自动补齐解析'); return j; }
+  return null;
+}
 export function getAIConfig() {
   try { return JSON.parse(localStorage.getItem(AI_CFG_KEY) || '{}'); } catch { return {}; }
 }
@@ -273,13 +337,20 @@ ${selHtml || '（未选中）'}
     input.value = '';
     addMsg('user', text);
     // 规则层：插入类请求且命中高频块 → 零 token 直取（不进模型）
+    let waiting = null;
     const rule = matchRule(text);
     if (rule) {
-      ad.placeBlock(rule.def, {});
-      addActionNote(`已插入「${rule.def.label}」（目录直取，未调用 AI）——点画布可直接改字`);
+      try {
+        ad.placeBlock(rule.def, {});
+        addActionNote(`已插入「${rule.def.label}」（目录直取，未调用 AI）——点画布可直接改字`);
+      } catch (e) {
+        // 当前模式暂无该块的适配版本：记缺口 + 中文提示（不吞异常）
+        logGap(text, rule.def.content);
+        waiting = addMsg('ai', `「${rule.def.label}」在当前页面模式暂不可插入（已记入缺口，后续版本会支持）。`);
+      }
       return;
     }
-    const waiting = addMsg('ai', '思考中…');
+    waiting = addMsg('ai', '思考中…');
     const aceCtx = aceOn() ? { est: Ace.estimateCall(text, 'chat', activeAI().model, 400), t0: Date.now() } : null;
     if (aceCtx) {
       addAceChip(`💰 预估 ~${fmtTok(aceCtx.est.inTok + aceCtx.est.outTok)} tok · $${aceCtx.est.costUsd.toFixed(4)} · ~${aceCtx.est.timeSec}s（本地估算${aceCtx.est.priced ? '' : ' · 默认价，可导入 ACE 记忆包校准'}）`);
@@ -292,44 +363,27 @@ ${selHtml || '（未选中）'}
         return;
       }
       const ai = activeAI();
-      const res = await fetch(ai.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [
-            { role: 'system', content: buildSystem() },
-            { role: 'user', content: text },
-          ],
-          max_tokens: 1200,
-          temperature: 0.6,
-        }),
-      });
-      if (!res.ok) {
-        const errText = await res.text();
-        waiting.textContent = '请求失败（' + res.status + '）：' + (errText.slice(0, 200) || '请检查网络/Key');
-        return;
-      }
-      const data = await res.json();
+      const data = await chatCompletion(ai, key, [
+        { role: 'system', content: buildSystem() },
+        { role: 'user', content: text },
+      ], 1200);
       // ACE：真实用量回写校准（usage 由 OpenAI 兼容响应自带）
       if (aceCtx) {
         const act = Ace.recordActual({ task: text, action: 'chat', model: ai.model, est: aceCtx.est, usage: data.usage, elapsedSec: (Date.now() - aceCtx.t0) / 1000 });
         if (data.usage) addAceChip(`💰 实际 ${fmtTok(data.usage.total_tokens)} tok · $${(act.actual.cost_usd || 0).toFixed(4)} · ${act.actual.time_seconds}s`);
       }
       const reply = data.choices?.[0]?.message?.content || '';
-      // 解析 JSON（容错：剥离 ```json 代码块）
-      let json = null;
-      const m = reply.match(/```(?:json)?\s*([\s\S]*?)```/);
-      const candidate = m ? m[1] : reply;
-      try { json = JSON.parse(candidate.trim()); } catch { json = null; }
+      // 解析 JSON（抢救式：剥围栏/补截断，弱模型输出不规范也能驱动协议）
+      const json = parseAIJson(reply);
       if (!json || !json.action) {
-        waiting.textContent = reply || '（AI 无回复）';
+        waiting.textContent = 'AI 回复无法解析（弱模型偶发，换个说法重试即可）。原始回复：' + reply.slice(0, 120);
         return;
       }
       // 执行操作（全部经 EditorAdapter，模式无关）
       try {
         if (json.action === 'style') {
-          ad.applyStyleToSelection(parseCss(json.css || ''));
+          // css 原样传给适配器（可能是字符串或对象——json 模式下模型两种都会输出，归一化在适配器内做）
+          ad.applyStyleToSelection(json.css || '');
           addActionNote(json.reason || '已应用样式');
           waiting.remove();
         } else if (json.action === 'replace') {
@@ -345,15 +399,27 @@ ${selHtml || '（未选中）'}
             waiting.textContent = `目录里没有「${key}」这个块。换个说法，或让我自由生成。`;
             return;
           }
-          ad.placeBlock(def, json.slots || {});
-          addActionNote(`${json.reason || '已插入区块'}（块「${def.label}」·目录命中）`);
-          waiting.remove();
+          try {
+            ad.placeBlock(def, json.slots || {});
+            addActionNote(`${json.reason || '已插入区块'}（块「${def.label}」·目录命中）`);
+            waiting.remove();
+          } catch (e) {
+            // canvas 等模式暂无该块的适配版本：记缺口并给中文提示（不炸）
+            logGap(text + '（' + def.label + '）', json.html || def.content);
+            waiting.textContent = `「${def.label}」在当前页面模式暂不可插入（已记入缺口，后续版本会支持）。`;
+          }
         } else if (json.action === 'insert') {
-          // 目录 miss：自由生成（贵）——记入缺口日志，供结晶环提炼新块
-          ad.insertFreeHTML(json.html);
+          // 目录 miss：自由生成（贵）——先记缺口日志再执行（执行被拒也要记，供结晶环提炼新块）
           logGap(text, json.html);
-          addActionNote(`${json.reason || '已在页面末尾插入区块'}（自由生成·已记缺口日志）`);
-          waiting.remove();
+          try {
+            ad.insertFreeHTML(json.html);
+            addActionNote(`${json.reason || '已在页面末尾插入区块'}（自由生成·已记缺口日志）`);
+            waiting.remove();
+          } catch (e) {
+            if (e.message.includes('CANVAS_FREE')) {
+              waiting.textContent = '当前为自由画布页，暂不支持 AI 自由生成整块内容——可改用组件块，或回 flow 页使用。';
+            } else throw e;
+          }
         } else {
           waiting.textContent = json.text || json.reason || '完成。';
         }
@@ -473,34 +539,18 @@ ${selHtml || '（未选中）'}
     }
     const ai = activeAI();
     const aceCtx = aceOn() ? { est: Ace.estimateCall(user, action, ai.model, system.length), t0: Date.now() } : null;
-    const res = await fetch(ai.endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({
-        model: ai.model,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-        max_tokens: maxTokens,
-        temperature: 0.6,
-      }),
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error('请求失败（' + res.status + '）：' + (errText.slice(0, 200) || '请检查网络/Key'));
-    }
-    const data = await res.json();
+    const data = await chatCompletion(ai, key, [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ], maxTokens);
     if (aceCtx) Ace.recordActual({ task: user, action, model: ai.model, est: aceCtx.est, usage: data.usage, elapsedSec: (Date.now() - aceCtx.t0) / 1000 });
     const reply = data.choices?.[0]?.message?.content || '';
-    const m = reply.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const candidate = m ? m[1] : reply;
-    try {
-      return JSON.parse(candidate.trim());
-    } catch {
-      // 常见原因：max_tokens 截断（回复在 JSON 中途断掉）
+    const parsed = parseAIJson(reply);
+    if (!parsed) {
+      // 常见原因：max_tokens 截断（回复在 JSON 中途断掉）或弱模型围栏未闭合
       throw new Error('AI 回复无法解析（若内容较长可能是输出被截断，请重试或精简描述）：' + reply.slice(0, 150));
     }
+    return parsed;
   }
 
   // ============ A1 智能配色 ============

@@ -9,7 +9,7 @@
     "build:single": "vite build --config vite.singlefile.config.mjs && vite build --config vite.singlefile-v2.config.mjs",
     "preview": "vite preview",
     "dist": "electron-builder --win portable",
-    "regression": "node scripts/regression.mjs"
+    "regression": "node tests/regression.mjs"
   },
   "dependencies": {
     "grapesjs": "^0.23.4",
