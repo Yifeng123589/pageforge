@@ -45,6 +45,14 @@ export const BLOCK_TEMPLATES = {
     }),
 };
 
+// 图片元素：src 可为 base64（离线可用，Q5 决策）或 URL
+// 注意：圆角/裁剪放在 img 自身（容器不 overflow:hidden）——容器裁剪会把伸出边缘的缩放/旋转手柄一起裁掉（实际踩过的 bug）
+export function makeImage(src, w = 480, h = 320) {
+  return T('image', 120, 120, w, h, 4,
+    { background: '#f1f5f9' },
+    `<img src="${src}" alt="" data-id="img_main" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:12px;">`);
+}
+
 // AI 块注册表 id → canvas 模板（EditorAdapter.placeBlock 用）
 export const CANVAS_BY_BLOCK = {
   'pf-cta-banner': BLOCK_TEMPLATES.cta,
@@ -84,16 +92,24 @@ export function getDoc() { return doc; }
 export function onChange(fn) { subs.add(fn); return () => subs.delete(fn); }
 
 // —— 快照撤销（Q6）——
+const stackSubs = new Set();
+export function onStackChange(fn) { stackSubs.add(fn); return () => stackSubs.delete(fn); }
+function notifyStack() {
+  const s = { hasUndo: undoStack.length > 0, hasRedo: redoStack.length > 0 };
+  for (const fn of stackSubs) fn(s);
+}
 export function snapshot() {
   undoStack.push(JSON.stringify(doc));
   if (undoStack.length > MAX_FRAMES) undoStack.shift();
   redoStack.length = 0;
+  notifyStack();
 }
 export function undo() {
   if (!undoStack.length) return false;
   redoStack.push(JSON.stringify(doc));
   doc = JSON.parse(undoStack.pop());
   emit();
+  notifyStack();
   return true;
 }
 export function redo() {
@@ -101,6 +117,7 @@ export function redo() {
   undoStack.push(JSON.stringify(doc));
   doc = JSON.parse(redoStack.pop());
   emit();
+  notifyStack();
   return true;
 }
 

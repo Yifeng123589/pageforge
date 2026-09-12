@@ -15,7 +15,7 @@ export function mergeOverrides(rootEl, overrides) {
   });
 }
 
-// 手柄（八点缩放）：挂在选中元素上，交互层通过 data-handle 识别
+// 手柄（八点缩放 + 旋转）：挂在选中元素上，交互层通过 data-handle 识别
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 function appendHandles(div) {
   for (const h of HANDLES) {
@@ -24,6 +24,11 @@ function appendHandles(div) {
     d.dataset.handle = h;
     div.appendChild(d);
   }
+  const rot = document.createElement('div');
+  rot.className = 'v2-rot';
+  rot.dataset.handle = 'rot';
+  rot.title = '拖动旋转';
+  div.appendChild(rot);
 }
 
 export function renderElement(el, selected) {
@@ -43,21 +48,48 @@ export function renderElement(el, selected) {
   return div;
 }
 
-// 溢出警告（D2：height 固定 px，内容超出画琥珀虚线）
-function markOverflow(stageEl) {
+// 溢出评估（D2）：内容超出固定高度画琥珀虚线警告。
+// 测量时临时隐藏手柄——选中态挂的 8 个手柄超出边缘 ~6px 会撑大 scrollHeight 造成误报（实际踩过的 bug）。
+// 选中元素本身不评估（编辑/拖拽过程中警告只会添乱），取消选择时再评估。
+function markOverflowOne(div) {
+  const hs = [...div.querySelectorAll('.v2-h')];
+  const prev = hs.map((h) => h.style.display);
+  hs.forEach((h) => { h.style.display = 'none'; });
+  const over = div.scrollHeight > div.clientHeight + 2;
+  hs.forEach((h, i) => { h.style.display = prev[i]; });
+  div.classList.toggle('overflow', over);
+}
+
+// 选中态增量更新：只切类 + 挂/卸手柄，不重建 DOM
+// （双击编辑依赖两次 click 命中同一节点——全量重建会让浏览器无法合成 dblclick）
+// selIds：选择集数组，第一个为主元素（承载手柄）
+export function updateSelection(stageEl, selIds) {
+  const ids = Array.isArray(selIds) ? selIds : (selIds ? [selIds] : []);
   stageEl.querySelectorAll('[data-el-id]').forEach((div) => {
-    if (div.scrollHeight > div.clientHeight + 2) div.classList.add('overflow');
+    const isSel = ids.includes(div.dataset.elId);
+    const isPrimary = ids[0] === div.dataset.elId;
+    div.classList.toggle('sel', isSel);
+    if (isSel && isPrimary) {
+      div.classList.remove('overflow'); // 选中时不评估溢出，取消选择时再评估
+      appendHandles(div);
+    } else {
+      div.querySelectorAll('.v2-h').forEach((n) => n.remove());
+      div.querySelectorAll('.v2-rot').forEach((n) => n.remove());
+      if (!isSel) markOverflowOne(div);
+    }
   });
 }
 
-// 全量重建（v0.1 策略：元素数 <100，全量重渲染足够快）
-export function renderStage(stageEl, doc, selectedId) {
+// 全量重建（结构变化时用：添加/删除/内容更新）
+export function renderStage(stageEl, doc, selIds) {
+  const ids = Array.isArray(selIds) ? selIds : (selIds ? [selIds] : []);
   stageEl.style.width = doc.stage.width + 'px';
   stageEl.style.height = doc.stage.height + 'px';
   stageEl.style.background = doc.stage.background;
   stageEl.innerHTML = '';
   for (const el of doc.elements) {
-    stageEl.appendChild(renderElement(el, el.id === selectedId));
+    const div = renderElement(el, ids.includes(el.id));
+    stageEl.appendChild(div);
+    if (!ids.includes(el.id)) markOverflowOne(div);
   }
-  markOverflow(stageEl);
 }

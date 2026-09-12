@@ -21,7 +21,7 @@ Thumbs.db
 /shots/
 vision_imgs/
 
-# 本机脚本：只留工程化核心（其余为一次性调试/带绝对路径，不入库）
-scripts/*
-!scripts/regression.mjs
-!scripts/add-block-icons.py
+# 历史测试存档与截图产物（体积大且含本机路径，不入库）
+# tests/ 下只保留 regression.mjs（工程化回归，npm run regression）
+tests/legacy/
+tests/artifacts/
