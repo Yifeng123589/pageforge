@@ -10,7 +10,7 @@ function parseStyleAttr(str) {
   return out;
 }
 
-export function initStylePanel({ panelEl, getDoc, getSel, updateElement, snapshot }) {
+export function initStylePanel({ panelEl, getDoc, getSel, updateElement, snapshot, toast = () => {} }) {
   let leafId = null;
 
   const q = (sel) => panelEl.querySelector(sel);
@@ -27,6 +27,8 @@ export function initStylePanel({ panelEl, getDoc, getSel, updateElement, snapsho
     for (const f of ['background', 'borderRadius', 'padding']) {
       q(`[data-f="${f}"]`).value = el.style[f] || '';
     }
+    // 动效
+    q('#sp-motion').value = el.motion || 'none';
     refreshLeaves(el);
   }
 
@@ -70,6 +72,15 @@ export function initStylePanel({ panelEl, getDoc, getSel, updateElement, snapsho
       }
       updateElement(el.id, patch);
     });
+  });
+
+  // 动效（声明式属性：滚动到视口触发，导出时注入 reveal 引擎）
+  q('#sp-motion').addEventListener('change', (e) => {
+    const el = cur();
+    if (!el) return;
+    snapshot();
+    updateElement(el.id, { motion: e.target.value === 'none' ? '' : e.target.value });
+    toast(e.target.value === 'none' ? '已移除动效' : '已设置动效——导出的网页滚动到这里会触发');
   });
 
   // 叶子切换
