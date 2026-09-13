@@ -82,13 +82,14 @@ initInteract({
   getZoom: () => zoom,
 });
 
-// —— 样式面板（容器 + 叶子，写 style/overrides）——
+// —— 样式面板（容器 + 叶子 + 动效，写 style/overrides/motion）——
 const stylePanel = initStylePanel({
   panelEl: $('#v2-style'),
   getDoc,
   getSel: () => sel,
   updateElement,
   snapshot,
+  toast,
 });
 
 // —— 右键菜单（复制/置顶/置底/删除）+ Ctrl+D 快捷复制 ——
@@ -225,6 +226,11 @@ function formatHtml(html, indent = 0) {
   return out.join('\n');
 }
 
+// v2 导出动效：复用 v1 pf-reveal 引擎（滚动到视口触发）。
+// 动效壳包在内容外层（内层 transform 动画），外层的旋转/定位不受影响
+const REVEAL_CSS = `.pf-reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1);will-change:opacity,transform}.pf-reveal[data-reveal="fade"]{transform:none}.pf-reveal[data-reveal="left"]{transform:translateX(-32px)}.pf-reveal[data-reveal="right"]{transform:translateX(32px)}.pf-reveal[data-reveal="zoom"]{transform:scale(.94)}.pf-reveal.pf-shown{opacity:1;transform:none}`;
+const REVEAL_JS = '(function(){var r=document.querySelectorAll(".pf-reveal");if(!r.length)return;if(!("IntersectionObserver"in window)){r.forEach(function(e){e.classList.add("pf-shown")});return}var o=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add("pf-shown");o.unobserve(x.target)}})},{threshold:.05,rootMargin:"0px 0px 60px 0px"});r.forEach(function(e){o.observe(e)})})();';
+
 // —— 导出（规范 §5：绝对定位 + 覆盖表合并 + 根节点等比缩放）——
 export function exportHtml() {
   const d = getDoc();
@@ -235,26 +241,34 @@ export function exportHtml() {
       const ov = el.overrides[n.getAttribute('data-id')];
       if (ov) for (const [k, v] of Object.entries(ov)) n.style.setProperty(k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase()), v);
     });
+    const inner = formatHtml(tmp.innerHTML, 2);
+    // 动效元素：内容包一层 reveal 壳（外层 rotate/定位不受影响）
+    const body = el.motion && el.motion !== 'none'
+      ? `    <div class="pf-reveal" data-reveal="${el.motion}" style="width:100%;height:100%;">\n${inner}\n    </div>`
+      : inner;
     return `  <div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;z-index:${el.z};transform:rotate(${el.rotation}deg);opacity:${el.opacity};${styleText(el.style)}">
-${formatHtml(tmp.innerHTML, 2)}
+${body}
   </div>`;
   }).join('\n');
   // D1：导出高度 = max(stage.height, 元素最低点 + 40)——元素超出 stage 不被裁切
   const bottom = d.elements.length ? Math.max(...d.elements.map((e) => e.y + e.height)) : 0;
   const exportH = Math.max(d.stage.height, bottom + 40);
+  const hasMotion = d.elements.some((e) => e.motion && e.motion !== 'none');
+  const motionCss = hasMotion ? `\n<style>${REVEAL_CSS}</style>` : '';
+  const motionJs = hasMotion ? `\n<script>${REVEAL_JS}</script>` : '';
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${d.name}</title>
-<style>*{box-sizing:border-box}body{margin:0;background:#e5e5e5}</style>
+<style>*{box-sizing:border-box}body{margin:0;background:#e5e5e5}</style>${motionCss}
 </head>
 <body>
 <div id="pf-stage" style="position:relative;width:${d.stage.width}px;height:${exportH}px;margin:0 auto;background:${d.stage.background};overflow:hidden;transform-origin:top center;">
 ${els}
 </div>
-<script>(function(){var s=document.getElementById('pf-stage');function f(){s.style.transform='scale('+Math.min(1,document.documentElement.clientWidth/${d.stage.width})+')';}addEventListener('resize',f);f();})();</script>
+<script>(function(){var s=document.getElementById('pf-stage');function f(){s.style.transform='scale('+Math.min(1,document.documentElement.clientWidth/${d.stage.width})+')';}addEventListener('resize',f);f();})();</script>${motionJs}
 </body>
 </html>`;
 }
