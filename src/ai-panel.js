@@ -6,8 +6,11 @@
 // 模式解耦：所有画布操作经 EditorAdapter（flow=包 GrapesJS / canvas=包 v2 store），本文件不直接触碰画布实现
 import { blocks } from './blocks.js';
 import * as Ace from './ace-bridge.js';
-import { buildBlockHTML, createFlowAdapter, flowUndoBatch } from './editor-adapter.js';
-export { buildBlockHTML };
+import { createFlowAdapter, flowUndoBatch } from './editor-adapter.js';
+import { buildBlockHTML } from './block-html.js';
+import { log } from './logger.js';
+import { STORAGE_KEYS } from './storage-keys.js';
+import { escHtml } from './esc.js';
 
 const AI_API = 'https://api.deepseek.com/chat/completions';
 const AI_MODEL = 'deepseek-chat';
@@ -26,7 +29,7 @@ const AI_PROVIDERS = [
   { id: 'custom', name: '自定义（OpenAI 兼容）', endpoint: '', model: '', models: [], keyHint: '填任意兼容 /chat/completions 的完整地址（含 Ollama/中转站）' },
 ];
 
-const AI_CFG_KEY = 'pageforge-ai-config-v1';
+const AI_CFG_KEY = STORAGE_KEYS.AI_CONFIG;
 
 // ---------- 结构化输出：response_format 强制 JSON（问题三修复）----------
 // DeepSeek/智谱等主流厂商均支持 json_object 模式；不支持的服务商 400 时自动去掉该参数重试一次
@@ -41,6 +44,10 @@ async function chatCompletion(ai, key, messages, maxTokens) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
     body: JSON.stringify(withFormat ? { ...base, response_format: { type: 'json_object' } } : base),
+  }).catch((err) => {
+    // 审计 I1：网络层错误脱敏（原始技术细节进 log，用户看人话）
+    log.error('AI 网络请求失败', err);
+    throw new Error('网络连接失败，请检查网络后重试');
   });
   let res = await call(true);
   if (res.status === 400) {
@@ -63,32 +70,36 @@ export function parseAIJson(reply) {
   const raw = String(reply || '');
   let t = raw.trim();
   let j = tryParseJSON(t);
-  if (j) return j;
+  if (j) return { json: j, repaired: false };
   // 剥掉成对或未闭合的 markdown 围栏
   t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   j = tryParseJSON(t);
-  if (j) return j;
+  if (j) return { json: j, repaired: false };
   // 截取首个 { 到末尾，再尝试
   const a = t.indexOf('{');
   if (a < 0) return null;
   t = t.slice(a);
   j = tryParseJSON(t);
-  if (j) return j;
-  // 截断补齐：扫描字符串/括号深度，补齐缺失的引号与闭合括号
-  let depth = 0, inStr = false, esc = false;
+  if (j) return { json: j, repaired: false };
+  // 截断补齐：用栈记录未闭合括号类型，按逆序补齐（审计 BUG-01：旧实现 depth 混合计数
+  // { 和 [ 但只补 }，数组中间截断会补错括号）
+  let inStr = false, esc = false;
+  const stack = [];
   for (const ch of t) {
     if (esc) { esc = false; continue; }
     if (ch === '\\') { esc = true; continue; }
     if (ch === '"') inStr = !inStr;
-    if (!inStr && (ch === '{' || ch === '[')) depth++;
-    if (!inStr && (ch === '}' || ch === ']')) depth--;
+    if (!inStr) {
+      if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
+      if (ch === '}' || ch === ']') stack.pop();
+    }
   }
   let fixed = t;
   if (inStr) fixed += '"';
   fixed = fixed.replace(/[,:\s]+$/, '');
-  for (let i = 0; i < depth; i++) fixed += '}';
+  while (stack.length) fixed += stack.pop();
   j = tryParseJSON(fixed);
-  if (j) { console.warn('[PageForge AI] 回复疑似截断，已自动补齐解析'); return j; }
+  if (j) { log.warn('AI 回复疑似截断，已自动补齐解析（结果需核对）'); return { json: j, repaired: true }; }
   return null;
 }
 export function getAIConfig() {
@@ -96,7 +107,11 @@ export function getAIConfig() {
 }
 export function setAIConfig(patch) {
   const next = { ...getAIConfig(), ...patch };
-  localStorage.setItem(AI_CFG_KEY, JSON.stringify(next));
+  try {
+    localStorage.setItem(AI_CFG_KEY, JSON.stringify(next));
+  } catch (e) {
+    log.warn('AI 配置保存失败（存储满或隐私模式）:', e.message);
+  }
   return next;
 }
 // 当前生效配置：未配置时回落 dev 注入的 DeepSeek（本机开发开箱即用）
@@ -107,7 +122,7 @@ export function activeAI() {
     provider: prov,
     endpoint: (cfg.provider === 'custom' ? (cfg.endpoint || '') : prov.endpoint) || AI_API,
     model: cfg.model || prov.model || AI_MODEL,
-    key: cfg.apiKey || localStorage.getItem('pageforge-ai-key') || AI_KEY_DEFAULT,
+    key: cfg.apiKey || localStorage.getItem(STORAGE_KEYS.AI_KEY_LEGACY) || AI_KEY_DEFAULT,
   };
 }
 
@@ -145,7 +160,7 @@ function buildCatalogText() {
 }
 
 // ---------- 缺口日志（飞轮：fallback = 模块缺口信号）----------
-const GAP_KEY = 'pageforge-gap-log-v1';
+const GAP_KEY = STORAGE_KEYS.GAP_LOG;
 export function getGapLog() {
   try { return JSON.parse(localStorage.getItem(GAP_KEY) || '[]'); } catch { return []; }
 }
@@ -188,7 +203,9 @@ export function initAIPanel({ editor, toast, adapter }) {
   function updateContext() {
     const sel = ad.getSelection();
     if (sel) {
-      ctxBar.innerHTML = `已选中：<b>&lt;${sel.tagName}&gt;</b> ${sel.text ? '「' + sel.text + '」' : ''}<span class="ctx-hint">（作用于选中组件）</span>`;
+      // 深入选中块内元素时明确标注作用范围，用户一眼能看到"AI 认得我选的那个按钮"
+      const scope = sel.insideBlock ? `（组件内部的${sel.leafLabel || '元素'}）` : '（作用于选中组件）';
+      ctxBar.innerHTML = `已选中：<b>&lt;${sel.tagName}&gt;</b> ${sel.text ? '「' + sel.text + '」' : ''}<span class="ctx-hint">${scope}</span>`;
     } else {
       ctxBar.innerHTML = `未选中组件 <span class="ctx-hint">（AI 将作用于整个页面 / 解答问题）</span>`;
     }
@@ -315,9 +332,11 @@ ${buildCatalogText()}
 ${html || '（空页面）'}
 当前选中组件（可能为空）：
 ${selHtml || '（未选中）'}
+${sel.leafId ? `\n★ 用户当前聚焦的是上面这个组件内部的一个${sel.leafLabel || '元素'}（<${sel.tagName}>${sel.text ? '「' + sel.text + '」' : ''}）——上面给的 HTML 就只是这一个元素。用户说"改它 / 这个 / 选中的"都指它，样式只作用于它，不要动整个组件。\n` : ''}
 
 根据用户请求，只回复一个 JSON 对象（不要任何其他文字、不要 markdown 代码块），格式：
-1) 选中组件时改样式：{"action":"style","reason":"一句话说明做了什么","css":"纯 CSS 声明，如 color:#fff;padding:24px;"}
+1) 选中组件时改样式：{"action":"style","reason":"一句话说明做了什么","css":"纯 CSS 声明，如 color:#fff;padding:24px;","target":"可选：要修改的文字叶子的 data-id"}
+   - target 说明：选中组件的 HTML 里每个文字元素都带 data-id 属性；用户指定改某个局部文字时填对应 data-id，只影响那个叶子；改整个组件或没把握时省略 target
 2) 选中组件时整体替换：{"action":"replace","reason":"...","html":"新的完整 HTML"}
 3) 插入新区块到页面末尾：{"action":"insert","reason":"...","html":"完整的 HTML 区块"}
 4) 只是问答/建议：{"action":"answer","text":"文字回答"}
@@ -351,7 +370,7 @@ ${selHtml || '（未选中）'}
       return;
     }
     waiting = addMsg('ai', '思考中…');
-    const aceCtx = aceOn() ? { est: Ace.estimateCall(text, 'chat', activeAI().model, 400), t0: Date.now() } : null;
+    const aceCtx = aceOn() ? { est: Ace.estimateCall(text, 'chat', activeAI().model, buildCatalogText()), t0: Date.now() } : null;
     if (aceCtx) {
       addAceChip(`💰 预估 ~${fmtTok(aceCtx.est.inTok + aceCtx.est.outTok)} tok · $${aceCtx.est.costUsd.toFixed(4)} · ~${aceCtx.est.timeSec}s（本地估算${aceCtx.est.priced ? '' : ' · 默认价，可导入 ACE 记忆包校准'}）`);
     }
@@ -374,16 +393,17 @@ ${selHtml || '（未选中）'}
       }
       const reply = data.choices?.[0]?.message?.content || '';
       // 解析 JSON（抢救式：剥围栏/补截断，弱模型输出不规范也能驱动协议）
-      const json = parseAIJson(reply);
+      const { json, repaired } = parseAIJson(reply);
       if (!json || !json.action) {
         waiting.textContent = 'AI 回复无法解析（弱模型偶发，换个说法重试即可）。原始回复：' + reply.slice(0, 120);
         return;
       }
+      if (repaired) addAceChip('⚠ 回复疑似截断，已自动补齐——请核对执行结果');
       // 执行操作（全部经 EditorAdapter，模式无关）
       try {
         if (json.action === 'style') {
-          // css 原样传给适配器（可能是字符串或对象——json 模式下模型两种都会输出，归一化在适配器内做）
-          ad.applyStyleToSelection(json.css || '');
+          // css 原样传给适配器（字符串/对象均可）；target = 指定的文字叶子 data-id（可选）
+          ad.applyStyleToSelection(json.css || '', json.target || null);
           addActionNote(json.reason || '已应用样式');
           waiting.remove();
         } else if (json.action === 'replace') {
@@ -433,20 +453,6 @@ ${selHtml || '（未选中）'}
   sendBtn.addEventListener('click', send);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
 
-  // CSS 字符串 → 对象（容错）
-  function parseCss(str) {
-    const obj = {};
-    str.split(';').forEach(part => {
-      const i = part.indexOf(':');
-      if (i > 0) {
-        const k = part.slice(0, i).trim();
-        const v = part.slice(i + 1).trim();
-        if (k && v) obj[k] = v;
-      }
-    });
-    return obj;
-  }
-
   // 模型设置（小白友好弹窗，Electron 不支持 window.prompt）
   function syncProviderUI() {
     const id = document.getElementById('ai-key-provider').value;
@@ -472,7 +478,7 @@ ${selHtml || '（未选中）'}
     syncProviderUI();
     const prov = AI_PROVIDERS.find((p) => p.id === (cfg.provider || 'deepseek'));
     document.getElementById('ai-key-model').value = cfg.model || prov?.model || '';
-    document.getElementById('ai-key-input').value = cfg.apiKey || localStorage.getItem('pageforge-ai-key') || '';
+    document.getElementById('ai-key-input').value = cfg.apiKey || localStorage.getItem(STORAGE_KEYS.AI_KEY_LEGACY) || '';
     document.getElementById('ai-key-endpoint').value = cfg.endpoint || '';
     refreshAceStatus();
     document.getElementById('modal-ai-key').hidden = false;
@@ -538,18 +544,19 @@ ${selHtml || '（未选中）'}
       throw new Error('NO_KEY');
     }
     const ai = activeAI();
-    const aceCtx = aceOn() ? { est: Ace.estimateCall(user, action, ai.model, system.length), t0: Date.now() } : null;
+    const aceCtx = aceOn() ? { est: Ace.estimateCall(user, action, ai.model, system), t0: Date.now() } : null;
     const data = await chatCompletion(ai, key, [
       { role: 'system', content: system },
       { role: 'user', content: user },
     ], maxTokens);
     if (aceCtx) Ace.recordActual({ task: user, action, model: ai.model, est: aceCtx.est, usage: data.usage, elapsedSec: (Date.now() - aceCtx.t0) / 1000 });
     const reply = data.choices?.[0]?.message?.content || '';
-    const parsed = parseAIJson(reply);
+    const { json: parsed, repaired } = parseAIJson(reply);
     if (!parsed) {
       // 常见原因：max_tokens 截断（回复在 JSON 中途断掉）或弱模型围栏未闭合
       throw new Error('AI 回复无法解析（若内容较长可能是输出被截断，请重试或精简描述）：' + reply.slice(0, 150));
     }
+    if (repaired) log.warn('aiRequest 回复截断已补齐，结果需人工核对', action);
     return parsed;
   }
 
@@ -596,7 +603,30 @@ ${selHtml || '（未选中）'}
   }
   function applyPaletteToPage() {
     if (!lastPalette || !lastPalette.palette) return;
+    // canvas 页：整个"调色板 → 全页元素"由适配器实现——v1 那段硬写 GrapesJS 的 CssComposer，
+    // canvas 页根本没有 CssComposer，不能照搬
+    if (ad.mode === 'canvas' && typeof ad.applyPalette === 'function') {
+      try {
+        const st = ad.applyPalette(lastPalette.palette);
+        const name = lastPalette.name || '自定义配色';
+        if (st.errs && st.errs.length) {
+          toast(`配色已部分应用（更新 ${st.total} 处），有 ${st.errs.length} 段失败——详见控制台`, 'error');
+          log.warn('配色部分失败', st.errs);
+        } else {
+          const parts = [`标题 ${st.titles}`, `正文 ${st.texts}`, `按钮 ${st.buttons}`];
+          if (st.stage) parts.push('画布背景');
+          toast(`已应用配色「${name}」（${parts.join(' · ')}）`);
+        }
+      } catch (e) {
+        toast('配色未能应用：' + e.message, 'error');
+        log.error('配色应用失败', e);
+      }
+      colorModal.hidden = true;
+      return;
+    }
     const p = lastPalette.palette;
+    // 审计 L2：三段应用分别计数，部分失败如实告知（不再一律报"已应用"）
+    const stat = { rules: 0, body: false, errs: [] };
     flowUndoBatch(editor, () => {
       // 组件样式在 CssComposer 规则（avoidInlineStyle），走 iframe 渲染层 + 规则修改（fixContrast 同款）
       try {
@@ -608,20 +638,22 @@ ${selHtml || '（未选中）'}
             const rule = editor.CssComposer.getAll().find((r) => (r.getSelectors && r.getSelectors().getFullString()) === '#' + id);
             if (!rule) return;
             const tag = el.tagName.toLowerCase();
-            const s = { ...rule.get('style') };
-            if (['h1', 'h2', 'h3', 'h4'].includes(tag)) s.color = p.text;
-            else if (tag === 'a' || tag === 'button') { s.background = p.accent; s.color = '#ffffff'; }
-            rule.set('style', s);
+            const s2 = { ...rule.get('style') };
+            if (['h1', 'h2', 'h3', 'h4'].includes(tag)) s2.color = p.text;
+            else if (tag === 'a' || tag === 'button') { s2.background = p.accent; s2.color = '#ffffff'; }
+            rule.set('style', s2);
+            stat.rules++;
           });
         }
-      } catch { /* 忽略 */ }
+      } catch (err) { stat.errs.push('标题/链接规则: ' + (err.message || err)); log.warn('配色应用-规则段失败', err); }
       // body 背景/文字：改 wrapper（body 组件）样式
       try {
         const ws = { ...(editor.getWrapper().getStyle() || {}) };
         ws.background = p.bg;
         ws.color = p.text;
         editor.getWrapper().setStyle(ws);
-      } catch { /* 忽略 */ }
+        stat.body = true;
+      } catch (err) { stat.errs.push('body 样式: ' + (err.message || err)); log.warn('配色应用-body 段失败', err); }
       // 兜底：找不到 body 规则时加规则
       try {
         const rules = editor.CssComposer.getAll();
@@ -630,9 +662,17 @@ ${selHtml || '（未选中）'}
           return sel === 'body' || sel === 'html body';
         });
         if (!hasBody) editor.CssComposer.addRules(`body{background:${p.bg};color:${p.text};}`);
-      } catch { /* 忽略 */ }
+      } catch (err) { stat.errs.push('body 兜底规则: ' + (err.message || err)); }
     });
-    toast(`已应用配色「${lastPalette.name || '自定义配色'}」`);
+    if (stat.rules === 0 && !stat.body) {
+      toast('配色未能应用（页面无可着色元素或应用出错）', 'error');
+      log.error('配色应用完全失败', stat.errs);
+    } else if (stat.errs.length) {
+      toast(`配色已部分应用（更新 ${stat.rules} 处规则），有 ${stat.errs.length} 段失败——详见控制台`, 'error');
+      log.warn('配色部分失败', stat.errs);
+    } else {
+      toast(`已应用配色「${lastPalette.name || '自定义配色'}」（更新 ${stat.rules} 处规则）`);
+    }
     colorModal.hidden = true;
   }
   $('#ai-color-apply').addEventListener('click', applyPaletteToPage);
@@ -648,24 +688,36 @@ ${selHtml || '（未选中）'}
     runDiagnose();
   });
   $('#ai-diag-cancel').addEventListener('click', () => { diagModal.hidden = true; });
+  // 诊断上下文与建议应用都经 adapter（AI 层零耦合）：
+  //   flow   → 页面 HTML + CSS 规则，建议用 CSS 选择器
+  //   canvas → 元素清单 + 关键样式，建议用 elementId（画布页没有 CSS 规则表）
+  const isCanvasDiag = () => ad.mode === 'canvas' && typeof ad.getDiagContext === 'function';
+  const DIAG_PROMPT_FLOW = '你是资深网页设计师，做设计诊断。分析用户页面的排版/间距/配色/可读性问题，只回复一个 JSON 对象：\n{"items":[{"title":"建议标题（短）","reason":"为什么/问题描述（一句话）","selector":"CSS 选择器（用标签名如 h1、p、section 或现有类名）","css":"修复用的纯 CSS 声明，如 padding:24px 0;line-height:1.8;color:#334155;"}]}\n3-5 条建议；css 只含声明（不含选择器）；只建议修改样式，不增删内容。';
+  const DIAG_PROMPT_CANVAS = '你是资深网页设计师，做设计诊断。这是一个"自由画布页"——元素用绝对定位摆放，没有 CSS 规则表，样式写在元素自己的容器样式和文字叶子的覆盖表里。\n只回复一个 JSON 对象：\n{"items":[{"title":"建议标题（短）","reason":"为什么/问题描述（一句话）","elementId":"要修改的元素 id（必须是清单里出现过的 id=xxx）","leafId":"可选：要改的文字叶子 data-id（清单 覆盖[] 里的键名）；留空表示改整个容器","css":"修复用的纯 CSS 声明，如 padding:40px;line-height:1.8;color:#334155;"}]}\n3-5 条建议；elementId 必须来自清单；css 只含声明；只建议修改样式，不增删内容。';
+
   async function runDiagnose() {
-    let html = '';
-    try { html = editor.getHtml().replace(/<body[^>]*>|<\/body>/g, '').slice(0, 6000); } catch { html = ''; }
-    let css = '';
-    try { css = editor.getCss().slice(0, 3000); } catch { css = ''; }
+    const useCanvas = isCanvasDiag();
+    let prompt = DIAG_PROMPT_FLOW;
+    let payload = '';
+    if (useCanvas) {
+      prompt = DIAG_PROMPT_CANVAS;
+      try { payload = ad.getDiagContext().text; } catch { payload = '（读取画布信息失败）'; }
+    } else {
+      let html = '';
+      try { html = editor.getHtml().replace(/<body[^>]*>|<\/body>/g, '').slice(0, 6000); } catch { html = ''; }
+      let css = '';
+      try { css = editor.getCss().slice(0, 3000); } catch { css = ''; }
+      payload = '当前页面 HTML：\n' + (html || '（空）') + '\n\n当前 CSS：\n' + (css || '（无）');
+    }
     try {
-      const json = await aiRequest(
-        '你是资深网页设计师，做设计诊断。分析用户页面的排版/间距/配色/可读性问题，只回复一个 JSON 对象：\n{"items":[{"title":"建议标题（短）","reason":"为什么/问题描述（一句话）","selector":"CSS 选择器（用标签名如 h1、p、section 或现有类名）","css":"修复用的纯 CSS 声明，如 padding:24px 0;line-height:1.8;color:#334155;"}]}\n3-5 条建议；css 只含声明（不含选择器）；只建议修改样式，不增删内容。',
-        '当前页面 HTML：\n' + (html || '（空）') + '\n\n当前 CSS：\n' + (css || '（无）'),
-        1600, 'diag'
-      );
+      const json = await aiRequest(prompt, payload, 1600, 'diag');
       lastDiagItems = Array.isArray(json.items) ? json.items : [];
       if (!lastDiagItems.length) throw new Error('回复缺少建议');
       $('#ai-diag-result').innerHTML = lastDiagItems.map((it, i) => `
         <div class="ai-diag-item">
-          <div class="ai-diag-title">${i + 1}. ${it.title}</div>
-          <div class="ai-diag-reason">${it.reason || ''}</div>
-          <code>${it.selector || 'body'} { ${it.css || ''} }</code>
+          <div class="ai-diag-title">${i + 1}. ${escHtml(it.title)}</div>
+          <div class="ai-diag-reason">${escHtml(it.reason || '')}</div>
+          <code>${escHtml(useCanvas ? (it.elementId || '?') : (it.selector || 'body'))} { ${escHtml(it.css || '')} }</code>
         </div>`).join('');
       $('#ai-diag-apply-all').disabled = false;
     } catch (e) {
@@ -674,6 +726,13 @@ ${selHtml || '（未选中）'}
     $('#ai-diag-loading').hidden = true;
   }
   function applyDiagItems() {
+    // canvas：交给适配器按 elementId 写回元素（诚实计数，跳过的不虚报）
+    if (isCanvasDiag() && typeof ad.applyDiagItems === 'function') {
+      const res = ad.applyDiagItems(lastDiagItems);
+      toast(`已应用 ${res.applied} 条建议${res.skipped ? `（${res.skipped} 条无法定位已跳过）` : ''} — 撤销可恢复`);
+      diagModal.hidden = true;
+      return;
+    }
     let applied = 0;
     flowUndoBatch(editor, () => {
       lastDiagItems.forEach((it) => {

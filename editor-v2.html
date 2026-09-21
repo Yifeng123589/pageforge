@@ -23,6 +23,9 @@
   #v2-zoom-label { min-width: 42px; text-align: center; color: #8a8a94; }
   #v2-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
   #v2-viewport { flex: 1; overflow: auto; padding: 40px; min-height: 0; }
+  /* 平移（A0-2）：准备态与拖动中的光标 */
+  #v2-viewport.pf-pan-ready { cursor: grab; }
+  #v2-viewport.pf-panning, #v2-viewport.pf-panning * { cursor: grabbing !important; }
   /* 样式面板 */
   #v2-style { width: 240px; flex-shrink: 0; background: #141419; border-left: 1px solid #2c2c33; padding: 14px; overflow-y: auto; font-size: 12.5px; }
   #v2-style[hidden] { display: none; }
@@ -36,6 +39,22 @@
   }
   .sp-sec input:focus, .sp-sec select:focus, #v2-style input:focus { outline: none; border-color: #4f46e5; }
   #sp-leaf-color { padding: 2px; height: 30px; }
+  /* 样式面板行布局（A0-7） */
+  .sp-row { display: flex; gap: 6px; align-items: center; }
+  .sp-row input, .sp-row select { min-width: 0; }
+  .sp-btn-row { display: flex; gap: 6px; }
+  .sp-btn-row button { flex: 1; padding: 5px 0; }
+  .sp-btn-row button.on { border-color: #4f46e5; background: #4f46e5; color: #ffffff; }
+  .sp-sec input[type="range"] { width: 100%; padding: 0; background: transparent; border: none; }
+  /* 位置与尺寸数值区（A0-6） */
+  .sp-grid2 { display: grid; grid-template-columns: 40px 1fr 46px 1fr; gap: 6px 8px; align-items: center; }
+  .sp-grid2 label { margin: 0; }
+  .sp-grid2 input { padding: 4px 6px; }
+  /* 对齐按钮组（A0-5） */
+  .sp-align-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .sp-align-row button { flex: 1; padding: 6px 0; font-size: 13px; line-height: 1; }
+  /* 画布背景色（A0-6） */
+  #v2-stage-bg { width: 32px; height: 26px; padding: 2px; background: #1e1e24; border: 1px solid #2c2c33; border-radius: 7px; cursor: pointer; }
   .sp-hint { color: #6b6b75; font-size: 11px; margin-top: 10px; }
   #v2-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1b1b22; border: 1px solid #34343d; color: #e8e8ec; padding: 9px 16px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 70000; max-width: 80vw; }
   #v2-toast.show { opacity: 1; }
@@ -44,6 +63,55 @@
   #v2-stage .v2-el { cursor: move; user-select: none; }
   #v2-stage .v2-el.hov { outline: 2px dashed rgba(99, 102, 241, .65); outline-offset: -1px; cursor: move; }
   #v2-stage .v2-el.sel { outline: 2px solid #6366f1; outline-offset: -1px; }
+  /* 深入选中的块内叶子：选中态由下方浮层（带旋转手柄）呈现，这里不再画框，避免双重边框 */
+  #v2-stage .v2-leaf-sel { outline: none; }
+  /* 块内元素浮层：移动 + 旋转手柄（用 transform 相对偏移，不改块布局） */
+  #v2-stage .v2-leaf-frame {
+    position: absolute; z-index: 60; pointer-events: none;
+    border: 1.5px solid #f59e0b; border-radius: 3px;
+  }
+  #v2-stage .v2-leaf-frame .lf-move { position: absolute; left: 0; top: 0; right: 0; bottom: 0; cursor: move; pointer-events: auto; }
+  #v2-stage .v2-leaf-frame .lf-rot {
+    position: absolute; left: 50%; top: -26px; width: 15px; height: 15px; margin-left: -7.5px;
+    border-radius: 50%; background: #f59e0b; border: 2px solid #fff; cursor: grab;
+    pointer-events: auto; box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  }
+  #v2-stage .v2-leaf-frame .lf-rot::before {
+    content: ''; position: absolute; left: 50%; top: 13px; width: 1.5px; height: 13px;
+    background: #f59e0b; transform: translateX(-50%);
+  }
+  /* —— 素材库（A1-1）—— */
+  .asset-bar { display: flex; align-items: center; gap: 10px; margin: 8px 0 10px; }
+  .asset-tabs { display: flex; gap: 4px; flex: none; }
+  .asset-tab {
+    padding: 6px 14px; border-radius: 8px; border: 1px solid #33353d; background: #1a1b20;
+    color: #a1a1aa; cursor: pointer; font-size: 13px;
+  }
+  .asset-tab.on { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+  .asset-bar input { flex: 1; min-width: 120px; }
+  #v2-asset-body { max-height: 46vh; overflow: auto; padding-right: 4px; }
+  .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
+  .asset-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 9px 5px;
+    border-radius: 10px; border: 1px solid #2a2b31; background: #17181c; color: #d4d4d8; cursor: pointer;
+  }
+  .asset-cell:hover { border-color: #4f46e5; background: #1e1f26; }
+  .asset-cell .asset-prev {
+    width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: #a5b4fc;
+  }
+  .asset-cell .asset-prev svg { width: 100%; height: 100%; display: block; }
+  .asset-cell.tall .asset-prev { width: 100%; height: 58px; border-radius: 6px; overflow: hidden; }
+  .asset-name { font-size: 11px; line-height: 1.3; text-align: center; }
+  .asset-name em { display: block; font-style: normal; color: #71717a; font-size: 10px; }
+  .asset-list { display: flex; flex-direction: column; gap: 6px; }
+  .asset-row {
+    display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 9px 12px;
+    border-radius: 10px; border: 1px solid #2a2b31; background: #17181c; color: #d4d4d8; cursor: pointer;
+  }
+  .asset-row:hover { border-color: #4f46e5; background: #1e1f26; }
+  .asset-row b { font-size: 12.5px; }
+  .asset-row span { font-size: 11.5px; color: #8b8b93; }
+  .asset-empty { color: #71717a; font-size: 13px; padding: 22px 0; text-align: center; }
   #v2-stage.v2-editing .v2-h { display: none; }
   #v2-stage [contenteditable="true"] {
     outline: 2px dashed #10b981; outline-offset: 2px; cursor: text; min-width: 8px;
@@ -68,6 +136,25 @@
   .v2-guides { position: absolute; inset: 0; pointer-events: none; z-index: 99998; }
   .v2-gx { position: absolute; top: -2000px; bottom: -2000px; width: 1px; background: #ff4d8d; }
   .v2-gy { position: absolute; left: -2000px; right: -2000px; height: 1px; background: #ff4d8d; }
+  /* 一键换肤弹窗（A0-4） */
+  #v2-theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 4px; }
+  .v2-theme-card { border: 1px solid #34343d; border-radius: 12px; padding: 14px; cursor: pointer; background: #1b1b22; transition: border-color .15s, transform .15s; }
+  .v2-theme-card:hover { border-color: #4f46e5; transform: translateY(-2px); }
+  .v2-theme-card b { display: block; font-size: 13.5px; margin-bottom: 4px; color: #e8e8ec; }
+  .v2-theme-card span { font-size: 11.5px; color: #8a8a94; line-height: 1.5; display: block; }
+  .v2-theme-swatches { display: flex; gap: 6px; margin-bottom: 10px; }
+  .v2-theme-swatches i { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,.18); }
+  /* 起步模板弹窗（A0-3） */
+  #v2-tpl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 4px; }
+  .v2-tpl-card { border: 1px solid #34343d; border-radius: 12px; padding: 14px; cursor: pointer; background: #1b1b22; transition: border-color .15s, transform .15s; }
+  .v2-tpl-card:hover { border-color: #4f46e5; transform: translateY(-2px); }
+  .v2-tpl-card b { display: block; font-size: 13.5px; margin-bottom: 4px; color: #e8e8ec; }
+  .v2-tpl-card span { font-size: 11.5px; color: #8a8a94; line-height: 1.5; display: block; }
+  .v2-tpl-thumb { height: 52px; border-radius: 8px; margin-bottom: 10px; }
+  /* 空画布引导（A0-3） */
+  #v2-empty { position: absolute; left: 50%; top: 120px; transform: translateX(-50%); text-align: center; pointer-events: none; }
+  #v2-empty p { margin: 0 0 8px; font-size: 15px; color: #a1a1aa; }
+  #v2-empty small { font-size: 12.5px; color: #6b6b75; }
   /* 右键菜单 */
   .v2-ctx { position: fixed; z-index: 60000; min-width: 170px; background: #1b1b22; border: 1px solid #34343d; border-radius: 10px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.55); }
   .v2-ctx[hidden] { display: none; }
@@ -80,7 +167,7 @@
   <style>
     /* v2 覆写：工具栏保持在 AI 遮罩之上；面板顶距对齐 v2 工具栏 */
     #v2-bar { position: relative; z-index: 15500; }
-    #ai-panel { top: 40px; }
+    #ai-panel { top: 56px; } /* 与 #v2-bar 高度对齐，避免面板顶部被工具栏遮住 */
     #ai-panel .ai-toolbar button { font-size: 12px; }
   </style>
 </head>
@@ -88,11 +175,20 @@
   <header id="v2-bar">
     <a href="./index.html" title="返回 v1 编辑器">← v1</a>
     <span class="sep"></span>
+    <button id="v2-tpl-btn" title="从模板开始（替换当前页，可 Ctrl+Z 撤销）">模板</button>
+    <button id="v2-theme-btn" title="一键换肤（整页配色，可撤销）">主题</button>
+    <span class="sep"></span>
     <span class="tb-lab">添加：</span>
     <button data-add="cta">行动横幅</button>
     <button data-add="features3">三栏特性</button>
     <button data-add="footer">页脚</button>
     <button id="v2-img-btn">图片</button>
+    <button id="v2-asset-btn" title="素材库：图标 / 插画 / 文案（全部内嵌，导出不依赖网络）">素材</button>
+    <span class="sep"></span>
+    <span class="tb-lab">页：</span>
+    <select id="v2-page-sel" title="切换画布页"></select>
+    <button id="v2-page-add" title="新建画布页">＋页</button>
+    <button id="v2-page-del" title="删除当前画布页">删页</button>
     <span class="sep"></span>
     <button id="v2-undo" title="撤销 (Ctrl+Z)" disabled>↶</button>
     <button id="v2-redo" title="恢复 (Ctrl+Y)" disabled>↷</button>
@@ -102,6 +198,7 @@
       <option value="1440x900" selected>演示 1440×900</option>
       <option value="1080x1440">海报 1080×1440</option>
     </select>
+    <input type="color" id="v2-stage-bg" value="#f5f5f7" title="画布背景色">
     <span class="sep"></span>
     <button id="v2-zoom-out">−</button>
     <span id="v2-zoom-label">100%</span>
@@ -134,16 +231,126 @@
         </div>
       </div>
     </div>
+    <!-- 链接编辑弹窗（右键「设置/修改超链接」）-->
+    <div id="v2-link-modal" class="modal-mask" hidden>
+      <div class="modal" style="width:380px">
+        <h3 id="v2-link-title">设置超链接</h3>
+        <p style="font-size:12.5px">留空或点「移除」可去掉链接。网址会自动补全 https://。</p>
+        <div class="page-form">
+          <label>链接地址</label>
+          <input type="text" id="v2-link-url" placeholder="例如：https://example.com 或 #anchor">
+          <div class="ai-key-hint" id="v2-link-hint"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="v2-link-cancel">取消</button>
+          <button class="btn ghost" id="v2-link-remove">移除链接</button>
+          <button class="btn primary" id="v2-link-ok">确定</button>
+        </div>
+      </div>
+    </div>
+    <!-- 一键换肤弹窗（A0-4） -->
+    <div id="v2-theme-modal" class="modal-mask" hidden>
+      <div class="modal modal-wide">
+        <h3>一键换肤</h3>
+        <p style="font-size:12.5px">整页配色按主题替换。<b>你手动改过的颜色不会被覆盖</b>；可 Ctrl+Z 撤销。</p>
+        <div id="v2-theme-grid"></div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="v2-theme-cancel">取消</button>
+        </div>
+      </div>
+    </div>
+    <!-- 起步模板弹窗（A0-3） -->
+    <div id="v2-tpl-modal" class="modal-mask" hidden>
+      <div class="modal modal-wide">
+        <h3>选择一个起步模板</h3>
+        <p style="font-size:12.5px">当前页内容会被替换（<b>Ctrl+Z 可整体撤销</b>）。选好之后直接改文字、换配色就行。</p>
+        <div id="v2-tpl-grid"></div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="v2-tpl-cancel">取消</button>
+        </div>
+      </div>
+    </div>
+    <div id="v2-asset-modal" class="modal-mask" hidden>
+      <div class="modal modal-wide">
+        <h3>素材库</h3>
+        <p style="font-size:12.5px">点一下就插入画布——<b>全部内嵌</b>，导出后不依赖网络。插入后可以改颜色、大小、位置。</p>
+        <div class="asset-bar">
+          <div class="asset-tabs">
+            <button class="asset-tab on" data-tab="icon">图标</button>
+            <button class="asset-tab" data-tab="image">插画</button>
+            <button class="asset-tab" data-tab="text">文案</button>
+          </div>
+          <input id="v2-asset-q" placeholder="搜索名称或分类…">
+        </div>
+        <div id="v2-asset-body"></div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="v2-asset-cancel">关闭</button>
+        </div>
+      </div>
+    </div>
     <aside id="v2-style" hidden>
       <div class="sp-title">样式</div>
       <div class="sp-sec">
+        <div class="sp-sec-t">位置与尺寸</div>
+        <div class="sp-grid2">
+          <label>X</label><input type="number" id="sp-x" title="左边距（画布坐标）">
+          <label>Y</label><input type="number" id="sp-y" title="上边距（画布坐标）">
+          <label>宽</label><input type="number" id="sp-w" min="40" title="最小 40">
+          <label>高</label><input type="number" id="sp-h" min="40" title="最小 40">
+          <label>旋转</label><input type="number" id="sp-rot" step="1" title="角度">
+          <label>不透明</label><input type="number" id="sp-op" min="0" max="1" step="0.05" title="0–1">
+          <label>层级</label><input type="number" id="sp-z" step="1" title="越大越在上层">
+        </div>
+      </div>
+      <div class="sp-sec">
+        <div class="sp-sec-t">对齐</div>
+        <div class="sp-align-row">
+          <button data-align="left" title="左对齐">⇤</button>
+          <button data-align="hcenter" title="水平居中">↔</button>
+          <button data-align="right" title="右对齐">⇥</button>
+        </div>
+        <div class="sp-align-row">
+          <button data-align="top" title="顶对齐">⤒</button>
+          <button data-align="vcenter" title="垂直居中">↕</button>
+          <button data-align="bottom" title="底对齐">⤓</button>
+        </div>
+        <div class="sp-align-row">
+          <button data-align="distH" title="水平均匀分布（需 ≥3 个元素）">≡</button>
+          <button data-align="distV" title="垂直均匀分布（需 ≥3 个元素）">⋮</button>
+        </div>
+        <div class="sp-hint" style="margin-top:6px">单选 → 对齐画布；多选 → 对齐选区</div>
+      </div>
+      <div class="sp-sec">
         <div class="sp-sec-t">容器</div>
         <label>背景</label>
-        <input data-f="background" placeholder="颜色或渐变">
+        <div class="sp-row">
+          <input type="color" id="sp-bg" value="#ffffff" style="flex:none;width:34px">
+          <input id="sp-bg-txt" placeholder="或渐变 linear-gradient(…)">
+        </div>
         <label>圆角</label>
-        <input data-f="borderRadius" placeholder="如 16px">
+        <input id="sp-radius" placeholder="如 16px">
         <label>内边距</label>
-        <input data-f="padding" placeholder="如 40px 48px">
+        <input id="sp-pad" placeholder="如 40px 48px">
+        <label>边框（宽度 / 样式 / 颜色）</label>
+        <div class="sp-row">
+          <input id="sp-bd-w" placeholder="宽度" style="flex:1">
+          <select id="sp-bd-s" style="flex:1">
+            <option value="">样式</option>
+            <option value="solid">实线</option>
+            <option value="dashed">虚线</option>
+            <option value="dotted">点线</option>
+          </select>
+          <input type="color" id="sp-bd-c" value="#e5e7eb" style="flex:none;width:34px">
+        </div>
+        <label>阴影（X / Y / 模糊 / 颜色）</label>
+        <div class="sp-row">
+          <input type="number" id="sp-sh-x" placeholder="X" style="flex:1">
+          <input type="number" id="sp-sh-y" placeholder="Y" style="flex:1">
+          <input type="number" id="sp-sh-b" placeholder="模糊" style="flex:1">
+          <input type="color" id="sp-sh-c" value="#000000" style="flex:none;width:34px">
+        </div>
+        <label>不透明度</label>
+        <input type="range" id="sp-opa" min="0" max="1" step="0.05" value="1">
         <label>动效（滚动到视口时触发）</label>
         <select id="sp-motion">
           <option value="none">无</option>
@@ -155,14 +362,33 @@
         </select>
       </div>
       <div class="sp-sec" id="sp-leaf-box">
-        <div class="sp-sec-t">文字叶子</div>
+        <div class="sp-sec-t">文字</div>
         <select id="sp-leaf"></select>
-        <label>颜色</label>
-        <input type="color" id="sp-leaf-color">
-        <label>字号</label>
-        <input id="sp-leaf-size" placeholder="如 18px">
-        <label>行高</label>
-        <input id="sp-leaf-line" placeholder="如 1.7">
+        <label>字体</label>
+        <select id="sp-font"></select>
+        <label>颜色 / 字重</label>
+        <div class="sp-row">
+          <input type="color" id="sp-leaf-color" style="flex:none;width:34px">
+          <select id="sp-weight" style="flex:1"></select>
+        </div>
+        <label>字号 / 行高 / 字间距</label>
+        <div class="sp-row">
+          <input id="sp-leaf-size" placeholder="字号" style="flex:1">
+          <input id="sp-leaf-line" placeholder="行高" style="flex:1">
+          <input id="sp-leaf-ls" placeholder="字距" style="flex:1">
+        </div>
+        <label>对齐</label>
+        <div class="sp-btn-row">
+          <button data-ta="left" title="左对齐">左</button>
+          <button data-ta="center" title="居中">中</button>
+          <button data-ta="right" title="右对齐">右</button>
+        </div>
+        <label>样式</label>
+        <div class="sp-btn-row">
+          <button data-td="bold" title="粗体（font-weight: 700）"><b>B</b></button>
+          <button data-td="italic" title="斜体"><i>I</i></button>
+          <button data-td="underline" title="下划线"><u>U</u></button>
+        </div>
       </div>
       <div class="sp-hint">改动实时预览，Ctrl+Z 可撤销</div>
     </aside>
@@ -269,7 +495,6 @@
       </div>
     </div>
   </div>
-<div id="toast" class="toast" hidden></div>
   <script type="module" src="/src/v2/main.js"></script>
 </body>
 </html>

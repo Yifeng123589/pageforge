@@ -1,10 +1,7 @@
 // v2 渲染层：扁平 JSON → DOM（绝对定位容器 + 内部受限 HTML），无鼠标逻辑
 // 缩放/平移由外层 viewport 的 CSS transform 负责（决策：DOM 渲染，非 canvas 库）
 
-const kebab = (s) => String(s).replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
-export function styleText(rec) {
-  return Object.entries(rec || {}).map(([k, v]) => `${kebab(k)}:${v}`).join(';');
-}
+import { kebab, styleText } from './css-utils.js';
 
 // 样式覆盖表合并：data-id 叶子的内联 style ← overrides[data-id]（覆盖表胜出）
 export function mergeOverrides(rootEl, overrides) {
@@ -63,6 +60,7 @@ function markOverflowOne(div) {
 // 选中态增量更新：只切类 + 挂/卸手柄，不重建 DOM
 // （双击编辑依赖两次 click 命中同一节点——全量重建会让浏览器无法合成 dblclick）
 // selIds：选择集数组，第一个为主元素（承载手柄）
+// 审计 BUG-12：主元素重挂手柄前先清理——防连续选中时手柄叠加
 export function updateSelection(stageEl, selIds) {
   const ids = Array.isArray(selIds) ? selIds : (selIds ? [selIds] : []);
   stageEl.querySelectorAll('[data-el-id]').forEach((div) => {
@@ -71,6 +69,7 @@ export function updateSelection(stageEl, selIds) {
     div.classList.toggle('sel', isSel);
     if (isSel && isPrimary) {
       div.classList.remove('overflow'); // 选中时不评估溢出，取消选择时再评估
+      div.querySelectorAll('.v2-h, .v2-rot').forEach((n) => n.remove()); // 先清旧再挂新
       appendHandles(div);
     } else {
       div.querySelectorAll('.v2-h').forEach((n) => n.remove());

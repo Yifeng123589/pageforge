@@ -3,7 +3,8 @@
 //   ACE 导出的 bundle 可在此导入获得个性化校准；此处的真实用量也可导出为 ACE 可读 bundle 喂给校准。
 // 估算为单轮 chat 版（ACE 完整版面向多轮 agent 任务，数学在此适配；校准算法与 ACE 同法：近 N 次实际/估算合计比）。
 
-const ACE_KEY = 'pageforge-ace-memory-v1';
+import { STORAGE_KEYS } from './storage-keys.js';
+const ACE_KEY = STORAGE_KEYS.ACE_MEMORY;
 const CAL_WINDOW = 10, CAL_MIN = 2, MAX_HISTORY = 1000;
 
 // 内置默认价格（$/1M tokens，约值；导入 ACE 记忆包后以你的价格表为准）
@@ -60,7 +61,7 @@ function loadState() {
 }
 function saveState(state) {
   const history = state.history.length > MAX_HISTORY ? state.history.slice(-MAX_HISTORY) : state.history;
-  try { localStorage.setItem(ACE_KEY, JSON.stringify({ ...state, history })); } catch { /* 存储满忽略 */ }
+  try { localStorage.setItem(ACE_KEY, JSON.stringify({ ...state, history })); } catch (e) { console.warn('[PageForge ACE] 记忆保存失败（存储满或被禁用），本次改动不会保留:', e.message); }
 }
 
 // 字符 → token 启发式：中文 ≈0.6/字，其他 ≈/3.8（校准系数会修正偏差）
@@ -82,12 +83,13 @@ function costOf(inTok, outTok, p) {
 }
 
 // 发送前估算：单轮调用版
-export function estimateCall(userText, action = 'chat', model = '', systemChars = 0) {
+export function estimateCall(userText, action = 'chat', model = '', systemText = '') {
   const prof = ACTION_PROFILE[action] || ACTION_PROFILE.chat;
   const st = loadState();
   const cal = st.calibration[prof.complexity] || {};
   const tm = cal.token_multiplier || 1;
-  const inTok = Math.round((tokensOf(userText) + tokensOf(String(systemChars ? ' '.repeat(systemChars) : '')) + 60) * tm); // +60≈系统提示骨架
+  // 审计 BUG-14：systemText 现在传真实提示词文本（此前传字符数再拼空格串，语义错误）
+  const inTok = Math.round((tokensOf(userText) + tokensOf(systemText) + 60) * tm); // +60≈系统提示骨架
   const outTok = Math.round(prof.out * tm);
   const { p, exact } = priceFor(model);
   const costUsd = costOf(inTok, outTok, p);
@@ -185,7 +187,4 @@ export function exportBundle() {
 export function state() {
   const st = loadState();
   return { models: Object.keys(st.model_prices).length, history: st.history.length, calibration: st.calibration };
-}
-export function resetMemory() {
-  localStorage.removeItem(ACE_KEY);
 }
