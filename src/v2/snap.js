@@ -3,6 +3,23 @@
 
 export const THRESHOLD = 8; // px，stage 坐标（调用方按 zoom 换算）
 
+/**
+ * 旋转角度吸附：接近 0 / 90 / 180 / 270 时吸附过去（±4° 内），其余原样返回。
+ * 抽成纯函数便于单测（GUI 的旋转依赖真实指针位置，不适合做确定性断言）。
+ * 注意与 Shift 步进的关系：Shift 是"每 15° 一格"的强制步进，本函数是"直角附近自动吸"，
+ * 两者互斥使用——按住 Shift 时按步进取整，否则走这里的吸附。
+ * @param {number} deg 当前角度（度，可为负值或超过 360）
+ */
+export function snapAngle(deg) {
+  const n = ((deg % 360) + 360) % 360;
+  for (const target of [0, 90, 180, 270]) {
+    if (Math.abs(n - target) <= 4) return target;
+  }
+  // 359° 附近也应吸附到 0（等价于 -1°）
+  if (Math.abs(n - 360) <= 4) return 0;
+  return deg;
+}
+
 export function candidates(doc, excludeId) {
   const xs = [0, doc.stage.width / 2, doc.stage.width];
   const ys = [0, doc.stage.height / 2, doc.stage.height];

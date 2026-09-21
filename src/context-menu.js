@@ -1,3 +1,5 @@
+// 审计 2.1：escapeAttr 统一使用共享 src/esc.js
+import { escapeAttr } from './esc.js';
 // PageForge 右键菜单（M4 质感打磨）
 // 画布内右键元素 → 中文菜单：复制 / 设置超链接 / 移除链接 / 置顶 / 置底 / 删除
 export function initContextMenu({ editor, toast }) {
@@ -149,12 +151,14 @@ export function initContextMenu({ editor, toast }) {
   const imgFileInput = document.getElementById('img-file');
   const imgUrlInput = document.getElementById('img-url');
 
+  let replaceTarget = null; // 更换图片模式的暂存（原 window.__pfReplaceImg，审计 2.7 解耦）
+
   function insertImage(src, comp) {
     // 更换图片模式：直接替换目标 img 的 src（保留原组件结构/样式）
-    const replaceTarget = window.__pfReplaceImg;
-    window.__pfReplaceImg = null;
-    if (replaceTarget) {
-      replaceTarget.setAttributes({ src });
+    const pending = replaceTarget;
+    replaceTarget = null;
+    if (pending) {
+      pending.setAttributes({ src });
       toast('图片已更换');
       return;
     }
@@ -196,13 +200,11 @@ export function initContextMenu({ editor, toast }) {
   }
 
   function openImageModal(replaceComp) {
-    window.__pfReplaceImg = replaceComp || null;
+    replaceTarget = replaceComp || null;
     modalImage.hidden = false;
     setTimeout(() => imgUrlInput.focus(), 60);
   }
-  // 暴露给主模块（轮播控制面板等复用）
-  window.__pfOpenImageModal = openImageModal;
-  window.__pfInsertImage = insertImage;
+
   document.getElementById('img-close').addEventListener('click', () => { modalImage.hidden = true; });
   document.getElementById('img-file-btn').addEventListener('click', () => imgFileInput.click());
   document.getElementById('img-ph-btn').addEventListener('click', () => {
@@ -266,10 +268,6 @@ export function initContextMenu({ editor, toast }) {
   linkInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('link-save').click();
   });
-
-  function escapeAttr(s) {
-    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  }
 
   // ===== 画布 iframe 内右键监听 =====
   function bindFrame() {
@@ -345,4 +343,6 @@ export function initContextMenu({ editor, toast }) {
   document.addEventListener('mousedown', (e) => {
     if (!menu.contains(e.target) && !modalLink.contains(e.target)) hide();
   });
+  // 审计 2.7：以返回值替代 window.__pf* 全局（main 注入到 imageApi 消费）
+  return { openImageModal, insertImage };
 }

@@ -10,6 +10,7 @@
 //   - 配色/诊断/初稿三个 A 系工具暂为 flow 专属（capabilities 里声明，UI 按 capabilities 显隐）
 
 import { buildBlockHTML } from './block-html.js';
+import { log } from './logger.js';
 export { buildBlockHTML };
 
 // —— flow 撤销打包：一批变更合并为单一撤销单元（magicFusionIndex 同组）——
@@ -72,9 +73,19 @@ export function createFlowAdapter(editor) {
     },
 
     // —— 样式 / 替换 ——
-    applyStyleToSelection(css) {
+    // target（可选）：data-id 叶子定位——flow 组件通常无 data-id，尽力匹配；
+    // 找不到时如实提示并回退整组件应用（审计 BUG-13：不再静默忽略）
+    applyStyleToSelection(css, target = null) {
       const s = editor.getSelected();
       if (!s) throw new Error('请先选中一个组件，再让我改样式。');
+      if (target) {
+        const child = s.find(`[data-id="${target}"]`)[0];
+        if (child) {
+          flowUndoBatch(editor, () => child.setStyle(css));
+          return;
+        }
+        log.warn(`flow 页未找到 data-id="${target}" 的叶子，样式已应用到整个组件`);
+      }
       flowUndoBatch(editor, () => s.setStyle(css));
     },
     replaceSelection(html) {

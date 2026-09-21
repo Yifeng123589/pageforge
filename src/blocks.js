@@ -1,7 +1,7 @@
 // PageForge 组件块库 —— 深色编辑器 + 浅色页面（Tailwind slate/indigo 色系）
 
 // 图片占位：渐变背景 + 图片图标（base64 SVG，导出后离线可用）
-const PH = (w = 800, h = 450, label = '图片') => {
+const placeholderImg = (w = 800, h = 450, label = '图片') => {
   const r = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
     <defs>
       <linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
@@ -26,7 +26,7 @@ export const blocks = [
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M4 8h16M4 16h16M8 4l-3 3 3 3M16 20l3-3-3-3\"/><rect x=\"10\" y=\"10\" width=\"4\" height=\"4\" rx=\"1\"/></svg>",
     content: `<section data-pf-sticky style="position:relative;height:180vh;background:#0b0b0f;">
   <div style="position:sticky;top:0;height:100vh;overflow:hidden;">
-    <img src="${PH(1200, 800, '主视觉')}" data-pf-blur style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="主视觉">
+    <img src="${placeholderImg(1200, 800, '主视觉')}" data-pf-blur style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="主视觉">
     <div data-pf-mask style="position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding:0 24px 12vh;background:linear-gradient(to top,rgba(0,0,0,.8),rgba(0,0,0,.3) 45%,transparent 72%);pointer-events:none;">
       <div style="text-align:center;max-width:720px;pointer-events:auto;">
         <h2 style="color:#fff;font-size:44px;font-weight:700;margin:0 0 12px;text-shadow:0 2px 24px rgba(0,0,0,.4);">系列标题</h2>
@@ -42,9 +42,9 @@ export const blocks = [
     label: '图片轮播',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M3 12l5-5 4 4 3-3 6 6\"/><circle cx=\"16\" cy=\"9\" r=\"1.4\"/></svg>",
     content: `<div data-pf-carousel data-an="fade" style="position:relative;height:560px;overflow:hidden;">
-  <img src="${PH(1200, 700, '视觉 1')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉1">
-  <img src="${PH(1200, 700, '视觉 2')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉2">
-  <img src="${PH(1200, 700, '视觉 3')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉3">
+  <img src="${placeholderImg(1200, 700, '视觉 1')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉1">
+  <img src="${placeholderImg(1200, 700, '视觉 2')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉2">
+  <img src="${placeholderImg(1200, 700, '视觉 3')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉3">
   <style>
     [data-pf-carousel][data-an="fade"]>img{animation:pfCFade 10.8s infinite}
     [data-pf-carousel][data-an="fade"]>img:nth-of-type(2){animation-delay:3.6s}
@@ -69,12 +69,12 @@ export const blocks = [
     content: `<div data-pf-marquee style="overflow:hidden;background:#0d0d0f;padding:48px 0;">
   <div data-pf-track style="display:flex;width:max-content;animation:pfMarquee 36s linear infinite;">
     <div style="flex-shrink:0;">
-      <div style="display:flex;gap:16px;padding:0 8px;"><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
-      <div style="display:flex;gap:16px;padding:0 8px 0 88px;"><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
+      <div style="display:flex;gap:16px;padding:0 8px;"><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
+      <div style="display:flex;gap:16px;padding:0 8px 0 88px;"><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
     </div>
     <div style="flex-shrink:0;">
-      <div style="display:flex;gap:16px;padding:0 8px;"><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
-      <div style="display:flex;gap:16px;padding:0 8px 0 88px;"><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${PH(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
+      <div style="display:flex;gap:16px;padding:0 8px;"><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
+      <div style="display:flex;gap:16px;padding:0 8px 0 88px;"><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""><img src="${placeholderImg(220, 150, '封面')}" style="width:220px;border-radius:12px;display:block;transition:transform .4s;" alt=""></div>
     </div>
   </div>
   <style>@keyframes pfMarquee{to{transform:translateX(-50%)}}</style><style>[data-pf-marquee]:hover div{animation-play-state:paused}[data-pf-hover]:hover img{transform:scale(1.08)}</style>
@@ -121,12 +121,12 @@ export const blocks = [
     label: '网格画廊',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"8\" height=\"8\" rx=\"1.2\"/><rect x=\"13\" y=\"3\" width=\"8\" height=\"8\" rx=\"1.2\"/><rect x=\"3\" y=\"13\" width=\"8\" height=\"8\" rx=\"1.2\"/><rect x=\"13\" y=\"13\" width=\"8\" height=\"8\" rx=\"1.2\"/></svg>",
     content: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding:48px 24px;max-width:1100px;margin:0 auto;">
-  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${PH(600, 400, '作品 1')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品1"></div>
-  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${PH(600, 400, '作品 2')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品2"></div>
-  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${PH(600, 400, '作品 3')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品3"></div>
-  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${PH(600, 400, '作品 4')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品4"></div>
-  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${PH(600, 400, '作品 5')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品5"></div>
-  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${PH(600, 400, '作品 6')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品6"></div>
+  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${placeholderImg(600, 400, '作品 1')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品1"></div>
+  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${placeholderImg(600, 400, '作品 2')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品2"></div>
+  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${placeholderImg(600, 400, '作品 3')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品3"></div>
+  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${placeholderImg(600, 400, '作品 4')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品4"></div>
+  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${placeholderImg(600, 400, '作品 5')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品5"></div>
+  <div data-pf-hover style="overflow:hidden;border-radius:14px;"><img src="${placeholderImg(600, 400, '作品 6')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品6"></div>
   <style>[data-pf-hover]:hover img{transform:scale(1.08)}</style>
 </div>`,
   },
@@ -140,21 +140,21 @@ export const blocks = [
   <p style="text-align:center;color:#64748b;margin:0 0 40px;line-height:1.7;">一句话介绍这个系列</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px;">
     <a href="#" data-pf-hover style="display:block;text-decoration:none;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 4px 20px rgba(15,23,42,0.08);transition:transform 0.2s;">
-      <img src="${PH(400, 300, '封面 1')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品1">
+      <img src="${placeholderImg(400, 300, '封面 1')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品1">
       <div style="padding:16px;">
         <h3 style="font-size:18px;font-weight:700;margin:0 0 6px;color:#1e293b;">作品一</h3>
         <p style="font-size:13px;color:#64748b;margin:0;line-height:1.6;">一句话简介</p>
       </div>
     </a>
     <a href="#" data-pf-hover style="display:block;text-decoration:none;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 4px 20px rgba(15,23,42,0.08);transition:transform 0.2s;">
-      <img src="${PH(400, 300, '封面 2')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品2">
+      <img src="${placeholderImg(400, 300, '封面 2')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品2">
       <div style="padding:16px;">
         <h3 style="font-size:18px;font-weight:700;margin:0 0 6px;color:#1e293b;">作品二</h3>
         <p style="font-size:13px;color:#64748b;margin:0;line-height:1.6;">一句话简介</p>
       </div>
     </a>
     <a href="#" data-pf-hover style="display:block;text-decoration:none;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 4px 20px rgba(15,23,42,0.08);transition:transform 0.2s;">
-      <img src="${PH(400, 300, '封面 3')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品3">
+      <img src="${placeholderImg(400, 300, '封面 3')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品3">
       <div style="padding:16px;">
         <h3 style="font-size:18px;font-weight:700;margin:0 0 6px;color:#1e293b;">作品三</h3>
         <p style="font-size:13px;color:#64748b;margin:0;line-height:1.6;">一句话简介</p>
@@ -302,7 +302,7 @@ export const blocks = [
     category: '基础',
     label: '图片',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><circle cx=\"8.5\" cy=\"10\" r=\"1.5\"/><path d=\"M21 15l-5-5L5 21\"/></svg>",
-    content: `<img src="${PH()}" alt="图片" style="width:100%;max-width:800px;margin:0 auto;border-radius:12px;display:block;">`,
+    content: `<img src="${placeholderImg()}" alt="图片" style="width:100%;max-width:800px;margin:0 auto;border-radius:12px;display:block;">`,
   },
   {
     id: 'pf-divider',
@@ -339,7 +339,7 @@ export const blocks = [
     label: '卡片',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"M3 17l6-6 12 12\"/></svg>",
     content: `<div style="max-width:360px;border-radius:16px;background:#ffffff;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden;">
-  <img src="${PH(720, 400)}" alt="卡片图" style="width:100%;display:block;">
+  <img src="${placeholderImg(720, 400)}" alt="卡片图" style="width:100%;display:block;">
   <div style="padding:24px;">
     <h3 style="margin:0 0 10px;font-size:20px;font-weight:700;color:#1e293b;">卡片标题</h3>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#64748b;">卡片描述文字，简单介绍这个内容板块。</p>
@@ -553,7 +553,7 @@ export const blocks = [
     label: '大图主视觉',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"12\" rx=\"2\"/><circle cx=\"8\" cy=\"8\" r=\"1.2\"/><path d=\"M3 13l5-5 13 13\"/><path d=\"M8 19h8M12 17.5V21\"/></svg>",
     content: `<section style="padding:0;">
-  <img src="${PH()}" alt="主视觉" style="width:100%;display:block;">
+  <img src="${placeholderImg()}" alt="主视觉" style="width:100%;display:block;">
   <div style="text-align:center;padding:64px 24px 80px;">
     <h2 style="font-size:40px;font-weight:700;letter-spacing:-0.5px;margin:0 0 12px;color:#1d1d1f;">产品名称</h2>
     <p style="font-size:19px;color:#6e6e73;margin:0 0 24px;">一句话介绍，简洁有力。</p>
@@ -567,7 +567,7 @@ export const blocks = [
     label: '文字叠图标题区',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M7 10h10M7 14h6\"/></svg>",
     content: `<section style="position:relative;text-align:center;overflow:hidden;">
-  <img src="${PH(1600, 900, '产品大图')}" alt="产品大图" style="width:100%;display:block;">
+  <img src="${placeholderImg(1600, 900, '产品大图')}" alt="产品大图" style="width:100%;display:block;">
   <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.5) 0%,rgba(0,0,0,0.2) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
     <h2 style="font-size:48px;font-weight:700;letter-spacing:-0.5px;margin:0 0 12px;color:#ffffff;">产品名称</h2>
     <p style="font-size:21px;line-height:1.5;color:rgba(255,255,255,0.92);margin:0 0 20px;">一句话介绍产品，字叠在大图上，苹果官网的招牌布局。</p>
@@ -722,7 +722,7 @@ export const blocks = [
     </a>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
       <a href="#" style="display:block;background:#fff;border:1px solid #e5e5ea;border-radius:16px;overflow:hidden;text-decoration:none;">
-        <img src="${PH(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
+        <img src="${placeholderImg(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
         <div style="padding:14px 16px;">
           <div style="font-size:14px;font-weight:600;color:#1d1d1f;line-height:1.4;">无畏16 锐龙版 超轻薄本</div>
           <div style="font-size:12px;color:#86868b;margin:6px 0 10px;line-height:1.5;">锐龙7 8845H 16G 512G 灰</div>
@@ -730,7 +730,7 @@ export const blocks = [
         </div>
       </a>
       <a href="#" style="display:block;background:#fff;border:1px solid #e5e5ea;border-radius:16px;overflow:hidden;text-decoration:none;">
-        <img src="${PH(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
+        <img src="${placeholderImg(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
         <div style="padding:14px 16px;">
           <div style="font-size:14px;font-weight:600;color:#1d1d1f;line-height:1.4;">天选4 锐龙版 电竞本</div>
           <div style="font-size:12px;color:#86868b;margin:6px 0 10px;line-height:1.5;">R9 8945H 32G 1T 灰</div>
@@ -738,7 +738,7 @@ export const blocks = [
         </div>
       </a>
       <a href="#" style="display:block;background:#fff;border:1px solid #e5e5ea;border-radius:16px;overflow:hidden;text-decoration:none;">
-        <img src="${PH(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
+        <img src="${placeholderImg(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
         <div style="padding:14px 16px;">
           <div style="font-size:14px;font-weight:600;color:#1d1d1f;line-height:1.4;">a豆14 Air 2026 联名款</div>
           <div style="font-size:12px;color:#86868b;margin:6px 0 10px;line-height:1.5;">AI9 365 32G 1T 蓝</div>
@@ -746,7 +746,7 @@ export const blocks = [
         </div>
       </a>
       <a href="#" style="display:block;background:#fff;border:1px solid #e5e5ea;border-radius:16px;overflow:hidden;text-decoration:none;">
-        <img src="${PH(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
+        <img src="${placeholderImg(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
         <div style="padding:14px 16px;">
           <div style="font-size:14px;font-weight:600;color:#1d1d1f;line-height:1.4;">ROG 掌机 X 24G</div>
           <div style="font-size:12px;color:#86868b;margin:6px 0 10px;line-height:1.5;">全高清 120Hz 掌机</div>
@@ -766,27 +766,27 @@ export const blocks = [
     content: `<section style="max-width:1300px;margin:0 auto;padding:40px 24px;">
   <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:18px;">
     <a href="#" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:22px 10px;">
-      <img src="${PH(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
+      <img src="${placeholderImg(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
       <span style="font-size:13px;color:#1d1d1f;">笔记本</span>
     </a>
     <a href="#" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:22px 10px;">
-      <img src="${PH(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
+      <img src="${placeholderImg(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
       <span style="font-size:13px;color:#1d1d1f;">台式机</span>
     </a>
     <a href="#" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:22px 10px;">
-      <img src="${PH(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
+      <img src="${placeholderImg(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
       <span style="font-size:13px;color:#1d1d1f;">显卡</span>
     </a>
     <a href="#" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:22px 10px;">
-      <img src="${PH(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
+      <img src="${placeholderImg(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
       <span style="font-size:13px;color:#1d1d1f;">显示器</span>
     </a>
     <a href="#" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:22px 10px;">
-      <img src="${PH(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
+      <img src="${placeholderImg(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
       <span style="font-size:13px;color:#1d1d1f;">外设</span>
     </a>
     <a href="#" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:22px 10px;">
-      <img src="${PH(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
+      <img src="${placeholderImg(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
       <span style="font-size:13px;color:#1d1d1f;">配件</span>
     </a>
   </div>

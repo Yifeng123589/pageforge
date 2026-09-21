@@ -10,14 +10,18 @@ import { initFitter } from './fitter.js';
 import { initContextMenu } from './context-menu.js';
 import { initAIPanel } from './ai-panel.js';
 import { createFlowAdapter } from './editor-adapter.js';
+import { log } from './logger.js';
+import { STORAGE_KEYS } from './storage-keys.js';
+import { escapeAttr } from './esc.js';
+import { canvasSectionHtml, canvasScaleJs, canvasHasMotion, formatHtml, REVEAL_CSS, REVEAL_JS } from './v2/export-canvas.js';
 import { themes } from './themes.js';
 import { assetIcons, assetImages, assetTexts } from './assets.js';
 import html2canvas from 'html2canvas';
 
-const STORAGE_KEY = 'pageforge-project-v1';
+const STORAGE_KEY = STORAGE_KEYS.PROJECT;
 // 页面元信息（标题/描述/favicon/OG 分享图）：工程 JSON 只存 title/desc，
 // meta 全量走 localStorage 独立持久化（刷新后不再丢，导出时注入 <head>）
-const META_KEY = 'pageforge-meta-v1';
+const META_KEY = STORAGE_KEYS.META;
 
 function loadPageMeta() {
   try { return JSON.parse(localStorage.getItem(META_KEY) || '{}'); } catch { return {}; }
@@ -28,7 +32,6 @@ function savePageMeta(patch) {
   return next;
 }
 // 属性值转义（og/link 的属性上下文）
-const escapeAttr = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // 启动时把持久化的 meta 回填到界面
 function restorePageMetaToUI() {
   const m = loadPageMeta();
@@ -36,19 +39,17 @@ function restorePageMetaToUI() {
   if (m.desc != null) $('#page-meta-desc').value = m.desc;
 }
 
-// ============ 动效（滚动渐入，导出时注入）============
-// 导出页面的动效 CSS：.pf-reveal 初始隐藏，滚动到视口后加 .pf-shown 渐入
-const REVEAL_CSS = `
-.pf-reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1);will-change:opacity,transform}
-.pf-reveal[data-reveal="fade"]{transform:none}
-.pf-reveal[data-reveal="left"]{transform:translateX(-32px)}
-.pf-reveal[data-reveal="right"]{transform:translateX(32px)}
-.pf-reveal[data-reveal="zoom"]{transform:scale(.94)}
-.pf-reveal.pf-shown{opacity:1;transform:none}`;
+// 审计 3.1：延迟/重试等魔法数字集中命名
+const TIMING = {
+  IFRAME_SETTLE: 60,      // iframe 内容稳定等待
+  CANVAS_READY: 500,      // 编辑器加载后画布就绪
+  CLEAN_RULES_DELAY: 600, // 旧规则清理延迟
+  BIND_PREVIEW: 800,      // 预览帧绑定延迟
+  PREVIEW_RETRY: 30,      // 预览注入重试间隔
+};
+const DARK_TEXT_COLORS = new Set(['#1d1d1f', '#1e293b', '#14532d', '#0c4a6e', '#431407', '#4c0519', '#2e1065']);
 
-// 导出页面的动效 JS（IntersectionObserver，零依赖，约 500B）
-// threshold 0.05 + 提前 60px 触发：大容器（表格+时间线等）更容易出现，避免"内容一直不显示"
-const REVEAL_JS = `(function(){var r=document.querySelectorAll('.pf-reveal');if(!r.length)return;if(!('IntersectionObserver'in window)){r.forEach(function(e){e.classList.add('pf-shown')});return}var o=new IntersectionObserver(function(en){en.forEach(function(x){if(x.isIntersecting){x.target.classList.add('pf-shown');o.unobserve(x.target)}})},{threshold:.05,rootMargin:'0px 0px 60px 0px'});r.forEach(function(e){o.observe(e)})})();`;
+// ============ 动效（滚动渐入，导出时注入）============
 
 // 编辑器画布内：直接显示最终态（避免用户以为内容"消失"；导出后才有动画）
 const REVEAL_EDIT_CSS = `.pf-reveal{opacity:1!important;transform:none!important}`;
@@ -74,12 +75,13 @@ document.querySelectorAll('.modal-mask').forEach((mask) =>
 );
 
 let toastTimer = null;
-function toast(msg) {
+function toast(msg, type = 'info') {
   const el = $('#toast');
   el.textContent = msg;
+  el.classList.toggle('error', type === 'error');
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+  toastTimer = setTimeout(() => { el.hidden = true; }, type === 'error' ? 3600 : 2200);
 }
 
 function download(filename, content, mime = 'text/plain') {
@@ -248,6 +250,16 @@ restorePageMetaToUI();
 
 // ============ 工具栏事件 ============
 // 导出 HTML 文档构建（独立成函数：工具栏按钮与回归测试共用）
+// 审计 5.2：读取 v2 canvas 文档列表（混排导出用），异常时返回空
+function readV2Docs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.V2_DOCS);
+    return raw ? (JSON.parse(raw).docs || []).filter((d) => d && Array.isArray(d.elements)) : [];
+  } catch {
+    return [];
+  }
+}
+
 function buildExportDoc() {
   const title = ($('#page-title').value || '我的页面').trim();
   const desc = ($('#page-meta-desc').value || '').trim();
@@ -261,8 +273,12 @@ function buildExportDoc() {
   const pages = editor.Pages.getAll();
   let html, css, extraJs = '';
 
-  if (pages.length > 1) {
-    // ===== 多页面导出：每页一个区块，导航链接 #页面名 切换 =====
+  // v2 canvas 页（localStorage 共享，混排导出）：追加到 flow 页之后
+  const v2Docs = readV2Docs();
+  const canvasHasMotionAny = v2Docs.some(canvasHasMotion);
+
+  if (pages.length > 1 || v2Docs.length) {
+    // ===== 多页面导出（flow 页 + canvas 页混排）：每页一个区块，导航链接 #页面名 切换 =====
     let htmlAll = '', cssAll = '';
     const pageNames = [];
     pages.forEach(p => {
@@ -273,6 +289,13 @@ function buildExportDoc() {
       const pageCss = editor.getCss();
       cssAll += pageCss + '\n';
     });
+    // canvas 页（v2 画布，绝对定位 + 等比缩放）
+    v2Docs.forEach((d) => {
+      let name = String(d.name || '画布页').replace(/"/g, '').replace(/</g, '').replace(/>/g, '');
+      while (pageNames.includes(name)) name += '·画布';
+      pageNames.push(name);
+      htmlAll += '\n' + canvasSectionHtml(d);
+    });
     // 合并去重：body 基础规则只保留一份
     cssAll = cssAll.replace(/(\* \{ box-sizing: border-box; \} body \{margin: 0;\}\s*)+/g, '* { box-sizing: border-box; } body {margin: 0;}');
     html = htmlAll;
@@ -280,13 +303,15 @@ function buildExportDoc() {
     // 页面切换 JS（导航链接 #页面名 → 切换显示对应页面）
     const names = pageNames.map(n => `"${n.replace(/"/g, '')}"`).join(',');
     extraJs = `\n<script>(function(){var ps=document.querySelectorAll('.pf-page');var ns=[${names}];function show(n){ps.forEach(function(p){p.style.display=(p.getAttribute('data-page-name')===n)?'':'none'});window.scrollTo(0,0)}if(ns.length)show(ns[0]);document.addEventListener('click',function(e){var a=e.target.closest('a[href^="#"]');if(!a)return;var n=a.getAttribute('href').slice(1);if(ns.indexOf(n)>-1){e.preventDefault();show(n)}})})();</script>`;
+    // canvas 页等比缩放引擎
+    extraJs += '\n' + canvasScaleJs();
   } else {
     // ===== 单页面导出（原逻辑）=====
     html = editor.getHtml().replace(/^<body[^>]*>/, '').replace(/<\/body>\s*$/, '');
     css = editor.getCss();
   }
-  // 页面含动效容器时，导出带上动效 CSS + 脚本
-  const hasReveal = editor.getHtml().includes('pf-reveal');
+  // 页面含动效容器时，导出带上动效 CSS + 脚本（flow 页或 canvas 页）
+  const hasReveal = editor.getHtml().includes('pf-reveal') || canvasHasMotionAny;
   const revealCss = hasReveal ? REVEAL_CSS : '';
   const revealJs = hasReveal ? `\n<script>${REVEAL_JS}</script>` : '';
   // 滚动粘性蒙版引擎（data-pf-sticky 容器）
@@ -342,6 +367,8 @@ $('#btn-new').addEventListener('click', () => {
 // 通用确认弹窗（新建/模板载入共用）
 let pendingConfirm = null;
 function openConfirm(title, msg, onConfirm) {
+  // 审计 BUG-05：弹窗已打开时忽略新调用（防双击覆盖 pendingConfirm 导致误执行）
+  if (!$('#modal-mask').hidden) return;
   $('#modal-mask .modal h3').textContent = title;
   $('#modal-mask .modal p').textContent = msg;
   pendingConfirm = onConfirm;
@@ -359,7 +386,7 @@ $('#btn-open').addEventListener('click', () => $('#file-open').click());
 // ============ 模板库 ============
 // 模板真实缩略图：隐藏 iframe 离线渲染模板 HTML → html2canvas 截图（复用 M9 截图方案）
 // 结果缓存 localStorage（TPL_THUMB_VER 变更后自动重生成）
-const TPL_THUMB_KEY = 'pageforge-template-thumbs';
+const TPL_THUMB_KEY = STORAGE_KEYS.TEMPLATE_THUMBS;
 const TPL_THUMB_VER = 'v1';
 function getThumbCache() {
   try {
@@ -379,10 +406,14 @@ async function renderTemplateThumb(t) {
   await new Promise((r) => setTimeout(r, 450)); // 等字体/布局稳定
   let url = null;
   try {
-    const canvas = await html2canvas(doc.body, {
-      windowWidth: 1200, windowHeight: 900, scale: 0.3,
-      backgroundColor: '#ffffff', logging: false, useCORS: true,
-    });
+    // 审计 4.1：html2canvas 挂起保护——5s 超时即放弃（iframe 必然清理，不再永驻 DOM）
+    const canvas = await Promise.race([
+      html2canvas(doc.body, {
+        windowWidth: 1200, windowHeight: 900, scale: 0.3,
+        backgroundColor: '#ffffff', logging: false, useCORS: true,
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('缩略图渲染超时')), 5000)),
+    ]);
     const thumb = document.createElement('canvas');
     thumb.width = 280; thumb.height = 210;
     const ctx = thumb.getContext('2d');
@@ -392,7 +423,7 @@ async function renderTemplateThumb(t) {
     const w = canvas.width * s, h = canvas.height * s;
     ctx.drawImage(canvas, (280 - w) / 2, (210 - h) / 2, w, h);
     url = thumb.toDataURL('image/jpeg', 0.72);
-  } catch { /* 单个失败退回文字占位 */ }
+  } catch { /* 单个失败/超时退回文字占位 */ }
   iframe.remove();
   return url;
 }
@@ -511,21 +542,13 @@ $('#color-image-file').addEventListener('change', async (e) => {
     renderPalette(colors.map((hex, i) => ({ name: `取色 ${i + 1}`, hex })));
     toast('已从图片提取配色');
   } catch (err) {
-    toast('图片取色失败');
-    console.error(err);
+    toast('图片取色失败', 'error');
+    log.error('图片取色失败', err);
   }
   e.target.value = '';
 });
 
 // ============ 页面设置 ============
-const DARK_SCHEME = {
-  name: '深色模式',
-  primary: '#2997ff',
-  background: '#000000',
-  text: '#f5f5f5',
-  accent: '#2997ff',
-  accentSoft: '#1d1d1f',
-};
 
 // 深色模式专用应用（反转组件配色，比通用 scheme 更细）
 function applyDarkTheme(editor) {
@@ -609,8 +632,8 @@ $('#file-open').addEventListener('change', (e) => {
         importHTML(text, file.name);
       }
     } catch (err) {
-      toast('打开失败：文件格式不正确');
-      console.error(err);
+      toast('打开失败：文件格式不正确', 'error');
+      log.error('工程文件打开失败', err);
     }
   };
   reader.readAsText(file);
@@ -635,12 +658,15 @@ function importHTML(html, fileName) {
       try {
         if (typeof editor.setStyle === 'function') editor.setStyle(cssParts);
         else if (editor.CssComposer && typeof editor.CssComposer.addRules === 'function') editor.CssComposer.addRules(cssParts);
-      } catch { /* 部分 CSS 规则解析失败时忽略 */ }
+      } catch (err) {
+        // 部分 CSS 规则解析失败：内容仍导入，但用户应知道样式可能缺失
+        log.warn('导入的 HTML 中部分 CSS 规则解析失败（样式可能缺失）:', err.message || err);
+      }
     }
     toast(`已导入：${fileName}（可继续编辑）`);
   } catch (err) {
-    toast('导入失败：' + err.message);
-    console.error(err);
+    toast('导入失败：' + err.message, 'error');
+    log.error('HTML 导入失败', err);
   }
 }
 
@@ -681,16 +707,20 @@ editor.on('device:select', () => setTimeout(fitCanvasToView, 600));
 
 // 清理旧工程遗留的 1200px 媒体查询规则（GrapesJS widthMedia bug 时代保存的工程，
 // 规则 mediaText 带 @media(max-width:1200px) → 全屏样式失效；加载后自动清掉，只影响 1200px）
+// 审计 BUG-07 修复：一次性迁移清理（旧版 widthMedia bug 生成的 legacy 包裹），
+// 清理后永久打标记——防止此后误删用户手动创建的 1200px 响应式规则
 function cleanLegacyMediaRules() {
   try {
+    if (localStorage.getItem(STORAGE_KEYS.MEDIA_CLEANED)) return; // 一次性迁移，不再执行
     const rules = editor.CssComposer.getAll();
     let cleaned = 0;
     rules.forEach(r => {
       const mt = r.get('mediaText') || '';
       if (mt.includes('1200px')) { r.set('mediaText', ''); cleaned++; }
     });
-    if (cleaned > 0) console.log('[PageForge] 已清理', cleaned, '条旧媒体查询规则');
-  } catch { /* 忽略 */ }
+    localStorage.setItem(STORAGE_KEYS.MEDIA_CLEANED, '1');
+    if (cleaned > 0) log.info('已清理', cleaned, '条旧媒体查询规则（一次性迁移）');
+  } catch (err) { log.warn('旧媒体查询清理失败（不影响使用）:', err.message || err); }
 }
 editor.on('load', () => setTimeout(cleanLegacyMediaRules, 600));
 
@@ -789,7 +819,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============ 右键菜单（M4：删除/超链接等基础操作右键唤起）============
-initContextMenu({ editor, toast });
+const contextMenuApi = initContextMenu({ editor, toast });
 
 // ============ AI 助手（VS Code 式侧边栏）============
 initAIPanel({ editor, toast, adapter: createFlowAdapter(editor) });
@@ -804,13 +834,19 @@ window.__pageforge = Object.assign(window.__pageforge || {}, {
 window.PageForge = {
   version: '0.4.0',
   plugins: [],
-  /** 注册插件：{ name, onInit(editor) } */
+  /** 注册插件：{ name, onInit(editor) }；初始化失败不进插件列表、如实提示 */
   register(plugin) {
     if (!plugin || typeof plugin !== 'object' || !plugin.name) return false;
-    this.plugins.push(plugin);
     if (typeof plugin.onInit === 'function') {
-      try { plugin.onInit(editor); } catch (err) { console.error(`插件 ${plugin.name} 初始化失败`, err); }
+      try {
+        plugin.onInit(editor);
+      } catch (err) {
+        log.error(`插件 ${plugin.name} 初始化失败`, err);
+        toast(`插件「${plugin.name}」加载失败`, 'error');
+        return false; // 失败不 push（审计 L3：避免后续调用再触发错误）
+      }
     }
+    this.plugins.push(plugin);
     toast(`插件「${plugin.name}」已加载`);
     return true;
   },
@@ -868,11 +904,13 @@ function toggleFullscreen() {
   } catch { /* 忽略（环境不支持时静默） */ }
 }
 btnFullscreen.addEventListener('click', toggleFullscreen);
+// 审计 3.5：合并两处 fullscreenchange 监听为单处理器（退出全屏时按钮态/画布适配/演示同步一次完成）
 document.addEventListener('fullscreenchange', () => {
   const on = !!document.fullscreenElement;
   btnFullscreen.classList.toggle('active', on);
   btnFullscreen.title = on ? '退出全屏 (F11)' : '全屏 / 退出全屏 (F11)';
   setTimeout(fitCanvasToView, 150); // 全屏后重新适配画布
+  if (demoMode && !on) stopDemo(); // 演示中用户用系统方式退出全屏 → 同步退出演示
 });
 // Electron 里 F11 无原生全屏，手动绑定；浏览器（单文件版）F11 由浏览器原生处理
 if (navigator.userAgent.includes('Electron')) {
@@ -955,7 +993,8 @@ function renderDemoThumbs() {
     const el = document.createElement('div');
     el.className = 'demo-thumb';
     el.dataset.page = p.getId();
-    el.innerHTML = `<img src="${demoThumbs[p.getId()] || ''}" alt=""><span>${i + 1}. ${p.getName() || '页面'}</span>`;
+    const safeName = (p.getName() || '页面').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    el.innerHTML = `<img src="${demoThumbs[p.getId()] || ''}" alt=""><span>${i + 1}. ${safeName}</span>`;
     el.addEventListener('click', () => {
       if (editor.Pages.getSelected().getId() !== p.getId()) {
         editor.Pages.select(p.getId());
@@ -1012,10 +1051,6 @@ document.addEventListener('keydown', (e) => {
     stopDemo();
   }
 });
-document.addEventListener('fullscreenchange', () => {
-  // 演示中用户用系统方式（如 Alt+F4 场景）退出全屏 → 同步退出演示
-  if (demoMode && !document.fullscreenElement) stopDemo();
-});
 
 document.addEventListener('keydown', (e) => {
   const inModal = e.target && e.target.closest ? !!e.target.closest('.modal-mask:not([hidden])') : false;
@@ -1026,10 +1061,16 @@ document.addEventListener('keydown', (e) => {
 
 // 预览模式：iframe 内点击放行链接（外链新窗口、锚点切页），并拦截编辑交互
 // 预览时禁用 iframe 内文本选择（否则点文字会出现蓝色选中高亮，像"选中"了）
+let previewRetryCount = 0; // 审计 BUG-04：重试上限 50 次（~1.5s），防 iframe 永久不可访问时空转
 function setFramePreviewMode(on) {
   try {
     const doc = editor.Canvas.getFrameEl().contentDocument;
-    if (!doc || !doc.head) { setTimeout(() => setFramePreviewMode(on), 30); return; }
+    if (!doc || !doc.head) {
+      if (++previewRetryCount > 50) { previewRetryCount = 0; log.warn('预览模式：iframe 长时间不可访问，放弃注入'); return; }
+      setTimeout(() => setFramePreviewMode(on), 30);
+      return;
+    }
+    previewRetryCount = 0;
     let st = doc.getElementById('pf-preview-style');
     if (on) {
       if (!st) {
@@ -1175,8 +1216,8 @@ function initCarouselPanel() {
       const i = +btn.dataset.i;
       const imgList = comp.find('img');
       const target = imgList[i];
-      if (btn.dataset.act === 'swap' && target && window.__pfOpenImageModal) {
-        window.__pfOpenImageModal(target);
+      if (btn.dataset.act === 'swap' && target) {
+        contextMenuApi.openImageModal(target);
       } else if (btn.dataset.act === 'del' && imgList.length > 1 && target) {
         target.remove();
         refresh(comp);
@@ -1205,27 +1246,7 @@ function getPageHTML() {
     return '';
   }
 }
-// 轻量 HTML 格式化（零依赖）：标签独立成行 + 缩进，方便在代码视图里阅读。
-// 注意：格式化仅用于展示；"应用代码"按文本原样回贴（内联元素间换行折叠成一个空格，属可接受差异）
-const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
-function formatHtml(html) {
-  const tokens = html.replace(/\r?\n\s*/g, '').match(/<[^>]+>|[^<]+/g) || [];
-  let depth = 0;
-  const out = [];
-  for (const tk of tokens) {
-    if (/^<\//.test(tk)) {
-      depth = Math.max(0, depth - 1);
-      out.push('  '.repeat(depth) + tk);
-    } else if (/^</.test(tk)) {
-      out.push('  '.repeat(depth) + tk);
-      const tag = (tk.match(/^<\s*([a-zA-Z0-9-]+)/) || [])[1];
-      if (tag && !VOID_TAGS.has(tag.toLowerCase()) && !/\/>$/.test(tk)) depth++;
-    } else {
-      if (tk.trim()) out.push('  '.repeat(depth) + tk.trim());
-    }
-  }
-  return out.join('\n');
-}
+// 轻量 HTML 格式化：改用共享模块 src/v2/export-canvas.js 的 formatHtml（已 import，签名兼容）
 $('#code-close').addEventListener('click', () => closeModal('modal-code'));
 $('#code-refresh').addEventListener('click', () => {
   $('#code-input').value = formatHtml(getPageHTML());
@@ -1268,8 +1289,8 @@ document.getElementById('guide-close')?.addEventListener('click', () => {
 
 // ============ 开屏 + 三步引导（第一分钟体验）============
 // 开屏只出现一次（视图 → 新手引导 可重看）；引导走完或跳过都记档
-const WELCOME_KEY = 'pageforge-welcomed-v1';
-const GUIDE_KEY = 'pageforge-guide-done-v1';
+const WELCOME_KEY = STORAGE_KEYS.WELCOMED;
+const GUIDE_KEY = STORAGE_KEYS.GUIDE_DONE;
 function showWelcome() { $('#welcome').hidden = false; }
 // 任何方式离开开屏都记"已看过"——否则点路径卡的用户每次启动都会再看到（实际踩过的 bug）
 function closeWelcome() {
@@ -1361,11 +1382,10 @@ function openKeysModal() {
   mask.querySelector('.modal h3').textContent = '快捷键';
   mask.querySelector('.modal p').textContent = '';
   const body = mask.querySelector('.modal .modal-actions');
+  // 审计 BUG-10：先移除全部旧表再插入（防快速重复打开时 DOM 累积）
+  mask.querySelectorAll('.keys-table').forEach((t) => t.remove());
   mask.querySelector('.modal').insertAdjacentHTML('beforeend', MODAL_KEYS.replace('<h3>快捷键</h3>', ''));
   openModal('modal-mask');
-  // 清理重复插入
-  const tables = mask.querySelectorAll('.keys-table');
-  if (tables.length > 1) tables[0].remove();
 }
 document.addEventListener('keydown', (e) => {
   if (e.key === '?' && !isInputFocused() && !e.ctrlKey && !e.metaKey) {
@@ -1381,7 +1401,7 @@ function snapshotPristine() {
   if (pristineCompStyles) return;
   // 若工程是上次换过主题后保存的，快照前先把主题色反向还原成原始色板，
   // 这样已保存的暖色页面切到其他主题时背景等颜色也能正确切换
-  const savedThemeId = localStorage.getItem('pageforge-theme');
+  const savedThemeId = localStorage.getItem(STORAGE_KEYS.THEME);
   const savedTheme = savedThemeId ? themes.find((t) => t.id === savedThemeId) : null;
   const rev = {};
   if (savedTheme) Object.entries(savedTheme.map).forEach(([from, to]) => { rev[to] = from; });
@@ -1530,7 +1550,7 @@ function applyTheme(theme) {
   });
   lastThemeId = theme.id;
   // 记录当前主题（下次打开工程时快照前反向还原用）
-  localStorage.setItem('pageforge-theme', theme.id);
+  localStorage.setItem(STORAGE_KEYS.THEME, theme.id);
   // 智能对比度修正：文字与背景太接近时自动调亮/调暗
   fixContrast(theme);
   // 触发画布刷新（渲染层更新）
@@ -1796,7 +1816,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // 首启动欢迎（M4：质感打磨）
-if (!localStorage.getItem('pageforge-visited')) {
-  localStorage.setItem('pageforge-visited', '1');
+if (!localStorage.getItem(STORAGE_KEYS.VISITED)) {
+  localStorage.setItem(STORAGE_KEYS.VISITED, '1');
   setTimeout(() => toast('欢迎使用 PageForge！从左侧拖入组件开始设计'), 900);
 }

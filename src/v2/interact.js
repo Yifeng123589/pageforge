@@ -3,12 +3,13 @@
 // 选择模型：主选择（primary，承载手柄/样式面板）+ 选择集（multi，Shift 加选/框选）。
 // v2.1 范围：单选、拖拽、八点缩放、旋转、多选（Shift 点选 + 框选）、组拖拽、多选删除。
 
-import { candidates, snapBox, snapResize, THRESHOLD } from './snap.js';
+import { candidates, snapBox, snapResize, snapAngle, THRESHOLD } from './snap.js';
 import { isEditing, commitIfEditing } from './textedit.js';
+import { lockAxis } from './align.js';
 
 const MIN = 40; // 最小尺寸（规范 §2）
 
-export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMultiIds, getMulti, updateElement, removeElement, snapshot, getZoom }) {
+export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMultiIds, getMulti, updateElement, removeElement, snapshot, getZoom, onDuplicate, onDeepSelect }) {
   let mode = null; // {kind:'move'|'move-group'|'resize'|'rotate'|'marquee', ...}
 
   // —— 参考线浮层 ——
@@ -56,6 +57,8 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
 
   stageEl.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
+    // 块内元素浮层（移动/旋转手柄）自己处理拖拽，别当成框选或拖整个模块
+    if (e.target && e.target.closest && e.target.closest('.v2-leaf-frame')) return;
     // 叶级编辑中：点回编辑叶子保持光标；点别处先提交，再按提交后的 DOM 重新命中
     if (isEditing()) {
       if (e.target.closest('[contenteditable="true"]')) { e.preventDefault(); return; }
@@ -85,6 +88,12 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
       const el = elById(elDiv.dataset.elId);
       if (!el) return;
       if (e.shiftKey) { toggleSel(el.id); e.preventDefault(); return; } // Shift 点选：不加拖拽模式
+      // Ctrl/⌘+点击：深入选中块内叶子（再点同一处退回整块）——复合模块里的按钮/标题靠这个进得去
+      if ((e.ctrlKey || e.metaKey) && onDeepSelect) {
+        const leafEl = e.target && e.target.closest ? e.target.closest('[data-id]') : null;
+        const leafId = leafEl && leafEl.getAttribute('data-id');
+        if (leafId) { e.preventDefault(); onDeepSelect(el.id, leafId); return; }
+      }
       // 点击已在选择集内的元素（多选态）→ 组拖拽，不重置选择；否则单选
       const inMulti = multiIds().length > 1 && multiIds().includes(el.id);
       if (!inMulti) setSel(el.id);
@@ -128,8 +137,19 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
     const th = THRESHOLD / zoom;
 
     if (mode.kind === 'move') {
+      // Alt+拖拽 = 复制（A0-11）：原件留在原位，拖的是副本（首帧检测一次）
+      // 快照已在本次拖拽的首个位移时压过，故复制与移动合并为同一步撤销
+      if (e.altKey && !mode.dupDone && onDuplicate) {
+        mode.dupDone = true;
+        const newId = onDuplicate(mode.id);
+        if (newId) mode.id = newId;
+      }
+      // Shift = 轴向锁定（只沿位移更大的一轴；拖拽中途按下即生效；逻辑在 align.js，可单测）
+      const locked = lockAxis(mode.start, dx, dy, e.shiftKey);
+      const mx = locked.x;
+      const my = locked.y;
       const s = snapBox(
-        { x: mode.start.x + dx, y: mode.start.y + dy, width: el.width, height: el.height },
+        { x: mx, y: my, width: el.width, height: el.height },
         cand, th,
       );
       updateElement(mode.id, { x: Math.round(s.x), y: Math.round(s.y) });
@@ -140,9 +160,10 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
         updateElement(id, { x: Math.round(s0.x + dx), y: Math.round(s0.y + dy) });
       }
     } else if (mode.kind === 'rotate') {
-      // 旋转：当前指针相对中心的角度 - 初始角度 + 初始 rotation；Shift = 15° 步进
+      // 旋转：当前指针相对中心的角度 - 初始角度 + 初始 rotation
+      // 按住 Shift = 15° 强制步进；否则接近直角（0/90/180/270）时自动吸附，避免手动对不齐
       let rot = mode.startAngle + (Math.atan2(e.clientY - mode.center.y, e.clientX - mode.center.x) - mode.startPointer) * 180 / Math.PI;
-      if (e.shiftKey) rot = Math.round(rot / 15) * 15;
+      rot = e.shiftKey ? Math.round(rot / 15) * 15 : snapAngle(rot);
       updateElement(mode.id, { rotation: Math.round(rot) });
     } else if (mode.kind === 'resize') {
       const h = mode.handle;
@@ -190,7 +211,7 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
       if (w > 6 && h > 6) {
         // 框选：与选框相交的元素全部入选（基础集 = Shift 追加）
         const hit = getDoc().elements
-          .filter((el) => !el.locked && el.x < x + w && el.x + el.width > x && el.y < y + h && el.y + el.height > y)
+          .filter((el) => !el.locked && el.opacity !== 0 && el.x < x + w && el.x + el.width > x && el.y < y + h && el.y + el.height > y) // 审计 BUG-19：跳过全透明
           .map((el) => el.id);
         setMultiIds([...new Set([...mode.base, ...hit])]);
       } else {
@@ -250,4 +271,9 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
       });
     }
   });
+
+  // 调试出口：供回归断言观察拖拽状态（生产逻辑不依赖它）
+  return {
+    modeInfo: () => (mode ? { kind: mode.kind, id: mode.id, dupDone: !!mode.dupDone } : null),
+  };
 }

@@ -24,7 +24,7 @@ function gaussSolve(A, b) {
 }
 
 // 多项式回归 y = c0 + c1 x + c2 x² + ...
-export function polyfit(xs, ys, degree) {
+function polyfit(xs, ys, degree) {
   const n = xs.length;
   if (n < degree + 1) return null;
   const A = [];
@@ -47,7 +47,7 @@ export function polyfit(xs, ys, degree) {
 }
 
 // 指数拟合 y = a·e^(bx)（ln y 线性化）
-export function expfit(xs, ys) {
+function expfit(xs, ys) {
   const n = xs.length;
   if (n < 2) return null;
   const ly = ys.map((y) => (y > 0 ? Math.log(y) : null));
@@ -68,7 +68,7 @@ export function expfit(xs, ys) {
 }
 
 // 正弦拟合 y = A sin(ωx) + B cos(ωx) + c（ω 网格搜索 + 正规方程最小二乘）
-export function sinfit(xs, ys) {
+function sinfit(xs, ys) {
   const n = xs.length;
   if (n < 4) return null;
   const xr = Math.max(...xs) - Math.min(...xs);
@@ -115,7 +115,7 @@ function fmt(v) {
   if (Math.abs(v) < 1e-10) return '0';
   return parseFloat(v.toFixed(4)).toString();
 }
-export function formatPoly(coeffs) {
+function formatPoly(coeffs) {
   const parts = [];
   for (let i = coeffs.length - 1; i >= 0; i--) {
     const c = coeffs[i];
@@ -127,10 +127,10 @@ export function formatPoly(coeffs) {
   }
   return parts.join('') || '0';
 }
-export function formatExp({ a, b }) {
+function formatExp({ a, b }) {
   return `${fmt(a)}·e<sup>${fmt(b)}x</sup>`;
 }
-export function formatSin({ a, omega, phi, c }) {
+function formatSin({ a, omega, phi, c }) {
   return `${fmt(a)}·sin(${fmt(omega)}x ${phi >= 0 ? '+' : '−'} ${fmt(Math.abs(phi))})${Math.abs(c) > 1e-10 ? ` + ${fmt(c)}` : ''}`;
 }
 
