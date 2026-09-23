@@ -1098,6 +1098,51 @@ if (!existsSync(V2_DIST)) {
         JSON.stringify(ax));
     }
 
+    // 地雷二：拖拽轻路径——拖拽期间只预览 DOM、不动库；松手一次性提交（消除每帧全量重建）
+    {
+      const before = JSON.parse(await v2eval(`(() => {
+        const stage = document.getElementById('v2-stage');
+        const d = window.__v2.getDoc();
+        const el = d.elements[1];
+        const div = stage.querySelector('[data-el-id="' + el.id + '"]');
+        div.scrollIntoView({ block: 'center' });
+        const r = div.getBoundingClientRect();
+        return JSON.stringify({ id: el.id, px: Math.round(r.left + r.width / 2), py: Math.round(r.top + Math.min(30, r.height / 2)), x: el.x, y: el.y });
+      })()`));
+      await v2mouse('mousePressed', before.px, before.py, 0);
+      await sleep(70);
+      await v2mouse('mouseMoved', before.px + 60, before.py + 40, 0);
+      await sleep(90);
+      const mid = JSON.parse(await v2eval(`(() => {
+        const el = window.__v2.getDoc().elements.find(x => x.id === '${before.id}');
+        const div = document.querySelector('[data-el-id="${before.id}"]');
+        return JSON.stringify({ storeX: el.x, storeY: el.y, domLeft: Math.round(parseFloat(div.style.left)), domTop: Math.round(parseFloat(div.style.top)) });
+      })()`));
+      check('地雷二：拖拽中只预览 DOM、库未动',
+        mid.storeX === before.x && mid.storeY === before.y && (mid.domLeft !== before.x || mid.domTop !== before.y),
+        `库 (${mid.storeX},${mid.storeY})；DOM (${mid.domLeft},${mid.domTop})；原 (${before.x},${before.y})`);
+      await v2mouse('mouseReleased', before.px + 60, before.py + 40, 0);
+      await sleep(360);
+      const after = JSON.parse(await v2eval(`(() => { const el = window.__v2.getDoc().elements.find(x => x.id === '${before.id}'); return JSON.stringify({ x: el.x, y: el.y }); })()`));
+      check('地雷二：松手一次性提交到库', after.x !== before.x && after.y !== before.y, `(${before.x},${before.y}) → (${after.x},${after.y})`);
+
+      // 溢出批量测量仍准确：改小高度 → overflow 标记；还原 → 标记消失
+      const ov = JSON.parse(await v2eval(`(() => {
+        window.__v2.setSel(null);
+        const el = window.__v2.getDoc().elements[1];
+        const orig = el.height;
+        window.__v2.updateElement(el.id, { height: 60 });
+        return JSON.stringify({ id: el.id, orig });
+      })()`));
+      await sleep(360);
+      const overflowOn = await v2eval(`document.querySelector('[data-el-id="${ov.id}"]').classList.contains('overflow')`);
+      check('地雷二：溢出批量测量（改小 → 标记出现）', overflowOn === true, `高度 ${ov.orig}→60`);
+      await v2eval(`(() => { window.__v2.updateElement('${ov.id}', { height: ${ov.orig} }); return true; })()`);
+      await sleep(360);
+      const overflowOff = await v2eval(`!document.querySelector('[data-el-id="${ov.id}"]').classList.contains('overflow')`);
+      check('地雷二：溢出恢复（还原高度 → 标记消失）', overflowOff === true);
+    }
+
     // 修复：右键"插入图片"落在点击处（此前被丢到全页元素下方）+ 块内含图时给"更换图片"
     {
       const TINY = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -1480,6 +1525,27 @@ if (!existsSync(V2_DIST)) {
       check('修复：叶子移动吸附到块容器边缘',
         Math.abs(snapRes.diff) <= 1 && guideCount >= 1,
         `左边缘差 ${snapRes.diff}px（拖到差 3px，吸附应补正）；拖拽中参考线 ${guideCount} 条；transform=${snapRes.tf}`);
+
+      // ⑧ 地雷二：叶子拖拽同样走轻路径（拖拽中库未动、DOM 已预览；松手一次性提交）
+      const f2 = JSON.parse(await v2eval(`(() => {
+        const r = document.querySelector('#v2-stage .v2-leaf-frame').getBoundingClientRect();
+        const e = window.__v2.getDoc().elements.find(x => x.id === '${lf.id}');
+        return JSON.stringify({ fx: Math.round(r.left + r.width / 2), fy: Math.round(r.top + r.height / 2), tf: (((e.overrides || {})['${lf.btn}']) || {}).transform || '' });
+      })()`));
+      await v2mouse('mousePressed', f2.fx, f2.fy, 0);
+      await sleep(70);
+      await v2mouse('mouseMoved', f2.fx + 40, f2.fy + 30, 0);
+      await sleep(90);
+      const mid2 = JSON.parse(await v2eval(`(() => {
+        const e = window.__v2.getDoc().elements.find(x => x.id === '${lf.id}');
+        const a = document.querySelector('[data-el-id="${lf.id}"] a[data-id="${lf.btn}"]');
+        return JSON.stringify({ tf: (((e.overrides || {})['${lf.btn}']) || {}).transform || '', inline: a ? a.style.transform : '' });
+      })()`));
+      check('地雷二：叶子拖拽中库未动、DOM 已预览', mid2.tf === f2.tf && mid2.inline !== '', `库="${mid2.tf}" DOM="${mid2.inline}"`);
+      await v2mouse('mouseReleased', f2.fx + 40, f2.fy + 30, 0);
+      await sleep(360);
+      const after2 = await v2eval(`(() => { const e = window.__v2.getDoc().elements.find(x => x.id === '${lf.id}'); return (((e.overrides || {})['${lf.btn}']) || {}).transform || ''; })()`);
+      check('地雷二：叶子松手一次性提交', after2 !== f2.tf && /translate\(/.test(String(after2)), `transform=${after2}`);
     }
 
     // A1-1 素材库：图标 / 插画 / 文案（全内嵌，导出不依赖网络）

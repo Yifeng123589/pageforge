@@ -28,7 +28,7 @@ export function composeTransform({ x = 0, y = 0, rot = 0 }) {
 }
 
 export function initLeafInteract({
-  stageEl, getSel, getLeaf, getDoc, updateElement, snapshot, getZoom, snapAngle, toast,
+  stageEl, getSel, getLeaf, getDoc, updateElement, preview, snapshot, getZoom, snapAngle, toast,
 }) {
   const frame = document.createElement('div');
   frame.className = 'v2-leaf-frame';
@@ -100,10 +100,10 @@ export function initLeafInteract({
     const own = leafEl();
     return parseTransform(ov.transform || (own && own.style.transform) || '');
   };
-  function writeTransform(t) {
-    const el = docEl();
-    const lfId = getLeaf();
-    if (!el || !lfId) return;
+  function writeTransform(t, elId = getSel(), lfId = getLeaf()) {
+    if (!elId || !lfId) return;
+    const el = getDoc().elements.find((e) => e.id === elId);
+    if (!el) return;
     const value = composeTransform(t);
     const prev = (el.overrides || {})[lfId] || {};
     const next = { ...prev };
@@ -133,6 +133,7 @@ export function initLeafInteract({
     const leaf = leafEl();
     if (!leaf) return;
     e.preventDefault(); e.stopPropagation();      // 别让画布把它当成"拖整个模块"
+    const elId = getSel(), lfId = getLeaf();
     const z = getZoom() || 1;
     const base = curTransform();
     const box = leafBox(base);                    // 叶子"原位"矩形（stage 坐标）
@@ -140,6 +141,7 @@ export function initLeafInteract({
     const th = THRESHOLD / z;
     const sx = e.clientX, sy = e.clientY;
     let moved = false;
+    let last = base;
     const onMove = (ev) => {
       if (!moved) { snapshot(); moved = true; }   // 首次真正位移才压快照
       let dx = (ev.clientX - sx) / z, dy = (ev.clientY - sy) / z;
@@ -155,7 +157,8 @@ export function initLeafInteract({
         if (!ev.shiftKey || dy !== 0) ny = s.y;
         gl = s.gl; gt = s.gt;
       }
-      writeTransform({ x: nx - box.x, y: ny - box.y, rot: base.rot });
+      last = { x: nx - box.x, y: ny - box.y, rot: base.rot };
+      preview(elId, lfId, composeTransform(last)); // 地雷二：只改 DOM，不写库
       drawGuides(gl, gt);
       place();
     };
@@ -163,6 +166,7 @@ export function initLeafInteract({
       clearGuides();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      if (moved) { writeTransform(last, elId, lfId); place(); } // 松手一次性提交（一步撤销）
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
@@ -181,21 +185,25 @@ export function initLeafInteract({
     const leaf = leafEl();
     if (!leaf) return;
     e.preventDefault(); e.stopPropagation();
+    const elId = getSel(), lfId = getLeaf();
     const t = curTransform();
     const r = leaf.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;       // 视口坐标下绕叶子中心
     const startPointer = Math.atan2(e.clientY - cy, e.clientX - cx);
     let moved = false;
+    let last = t;
     const onMove = (ev) => {
       if (!moved) { snapshot(); moved = true; }
       let deg = t.rot + (Math.atan2(ev.clientY - cy, ev.clientX - cx) - startPointer) * RAD;
       deg = ev.shiftKey ? Math.round(deg / 15) * 15 : (snapAngle ? snapAngle(deg) : deg);
-      writeTransform({ ...t, rot: deg });
+      last = { ...t, rot: deg };
+      preview(elId, lfId, composeTransform(last)); // 地雷二：只改 DOM，不写库
       place();
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      if (moved) { writeTransform(last, elId, lfId); place(); } // 松手一次性提交
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);

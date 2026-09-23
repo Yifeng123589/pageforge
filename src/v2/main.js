@@ -4,7 +4,7 @@
 
 import {
   getDoc, getDocs, getCurId, onChange, onStackChange, snapshot, undo, redo,
-  updateElement, addElement, removeElement, setStage, addDoc, switchDoc, removeDoc,
+  updateElement, updateElements, addElement, removeElement, setStage, addDoc, switchDoc, removeDoc,
   placeElement, BLOCK_TEMPLATES, makeImage, elId, applyStarterToCurrentDoc, applyTheme, themeList,
   makeElementFromHTML, onSaveStatus,
 } from './store.js';
@@ -15,7 +15,7 @@ import { initAssetPanel, iconToHtml, svgToDataUrl } from './assetpanel.js';
 import { initLeafInteract } from './leafinteract.js';
 import { snapAngle } from './snap.js';
 import { blocks } from '../blocks.js';
-import { renderStage, updateSelection } from './render.js';
+import { renderStage, updateSelection, previewGeom, previewLeafTransform } from './render.js';
 import { initInteract } from './interact.js';
 import { initTextEditing, isEditing } from './textedit.js';
 import { initPan } from './pan.js';
@@ -182,6 +182,8 @@ const interact = initInteract({
   setMultiIds,
   getMulti: () => multiSel,
   updateElement,
+  updateElements,
+  preview: (id, patch) => previewGeom(stage, id, patch), // 地雷二：拖拽轻路径
   removeElement,
   snapshot,
   getZoom: () => zoom,
@@ -196,6 +198,7 @@ leafInteract = initLeafInteract({
   getLeaf: () => leafSel,
   getDoc,
   updateElement,
+  preview: (elId, lfId, value) => previewLeafTransform(stage, elId, lfId, value), // 地雷二：叶子拖拽轻路径
   snapshot,
   getZoom: () => zoom,
   snapAngle,
@@ -727,7 +730,7 @@ function hideSaveWarn() {
 onSaveStatus((st) => { if (st.ok) hideSaveWarn(); else showSaveWarn(); });
 
 // —— 测试/控制台接口 ——
-window.__v2 = { getDoc, getDocs, getCurId, exportHtml, snapshot, undo, redo, setSel, setMulti: setMultiIds, adapter: canvasAdapter, ctx, blocks, interact, lockAxis, selectLeaf, snapAngle, leafInteract };
+window.__v2 = { getDoc, getDocs, getCurId, exportHtml, snapshot, undo, redo, updateElement, setSel, setMulti: setMultiIds, adapter: canvasAdapter, ctx, blocks, interact, lockAxis, selectLeaf, snapAngle, leafInteract };
 
 // —— AI 面板（CanvasAdapter：拼块/改样式/答疑；配色/诊断/初稿按能力门控隐藏）——
 initAIPanel({ editor: null, toast, adapter: canvasAdapter });
