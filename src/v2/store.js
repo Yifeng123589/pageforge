@@ -290,6 +290,16 @@ export function updateElement(id, patch) {
   Object.assign(e, patch);
   emit();
 }
+// 地雷二：批量更新（拖拽松手一次性提交）——只发一次 emit，避免 N 次全量重建
+export function updateElements(patches) {
+  if (!patches || !patches.length) return;
+  const d = getDoc();
+  for (const { id, patch } of patches) {
+    const e = d.elements.find((x) => x.id === id);
+    if (e && patch) Object.assign(e, patch);
+  }
+  emit();
+}
 export function addElement(el) { getDoc().elements.push(el); emit(); return el; }
 
 // 审计 2.3：放置策略统一（内容底部 +40、水平居中、stage 向下生长）——三处调用收敛于此

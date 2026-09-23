@@ -9,7 +9,7 @@ import { lockAxis } from './align.js';
 
 const MIN = 40; // 最小尺寸（规范 §2）
 
-export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMultiIds, getMulti, updateElement, removeElement, snapshot, getZoom, onDuplicate, onDeepSelect }) {
+export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMultiIds, getMulti, updateElement, updateElements, preview, removeElement, snapshot, getZoom, onDuplicate, onDeepSelect }) {
   let mode = null; // {kind:'move'|'move-group'|'resize'|'rotate'|'marquee', ...}
 
   // —— 参考线浮层 ——
@@ -31,6 +31,14 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
 
   const elById = (id) => getDoc().elements.find((x) => x.id === id);
   const multiIds = () => { const m = getMulti(); return m && m.length ? m : (getSel() ? [getSel()] : []); };
+
+  // 地雷二：拖拽"轻路径"——位移只预览 DOM、不写库（每次 emit 都全量重建 DOM = 每帧重建，页面一大必卡）。
+  // mode.live 累计每个元素的最新 patch；松手时一次性 updateElements 提交（只发一次 emit）。
+  function live(id, patch) {
+    if (!mode.live) mode.live = {};
+    mode.live[id] = { ...mode.live[id], ...patch };
+    preview(id, mode.live[id]);
+  }
 
   // —— 手柄几何命中（比 DOM elementFromPoint 稳：不被 overflow/裁剪/遮挡影响）——
   // 返回 { handle, elDiv } 或 null；只对主选中元素生效
@@ -141,6 +149,11 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
       // 快照已在本次拖拽的首个位移时压过，故复制与移动合并为同一步撤销
       if (e.altKey && !mode.dupDone && onDuplicate) {
         mode.dupDone = true;
+        // 先把原件当前拖到的位置落库——复制体从"当前位置"开始，原件停在按 Alt 的地方（与旧行为一致）
+        if (mode.live && mode.live[mode.id]) {
+          updateElements([{ id: mode.id, patch: mode.live[mode.id] }]);
+          delete mode.live[mode.id];
+        }
         const newId = onDuplicate(mode.id);
         if (newId) mode.id = newId;
       }
@@ -152,19 +165,19 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
         { x: mx, y: my, width: el.width, height: el.height },
         cand, th,
       );
-      updateElement(mode.id, { x: Math.round(s.x), y: Math.round(s.y) });
+      live(mode.id, { x: Math.round(s.x), y: Math.round(s.y) });
       drawGuides(s.gl, s.gt);
     } else if (mode.kind === 'move-group') {
       // 组拖拽：同位移应用到选择集全部（不吸附，保持相对位置）
       for (const [id, s0] of Object.entries(mode.starts)) {
-        updateElement(id, { x: Math.round(s0.x + dx), y: Math.round(s0.y + dy) });
+        live(id, { x: Math.round(s0.x + dx), y: Math.round(s0.y + dy) });
       }
     } else if (mode.kind === 'rotate') {
       // 旋转：当前指针相对中心的角度 - 初始角度 + 初始 rotation
       // 按住 Shift = 15° 强制步进；否则接近直角（0/90/180/270）时自动吸附，避免手动对不齐
       let rot = mode.startAngle + (Math.atan2(e.clientY - mode.center.y, e.clientX - mode.center.x) - mode.startPointer) * 180 / Math.PI;
       rot = e.shiftKey ? Math.round(rot / 15) * 15 : snapAngle(rot);
-      updateElement(mode.id, { rotation: Math.round(rot) });
+      live(mode.id, { rotation: Math.round(rot) });
     } else if (mode.kind === 'resize') {
       const h = mode.handle;
       let { x, y, width, height } = mode.start;
@@ -179,7 +192,7 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
         if (h.includes('n')) y = mode.start.y + (mode.start.height - height);
         if (h.includes('w')) x = mode.start.x + (mode.start.width - width);
         // 锁比例时跳过吸附（双边吸附会破坏比例）
-        updateElement(mode.id, { x: Math.round(x), y: Math.round(y), width: Math.round(width), height });
+        live(mode.id, { x: Math.round(x), y: Math.round(y), width: Math.round(width), height });
       } else {
         // 缩放吸附：只吸移动中的边
         const s = snapResize({ x, y, width, height }, h, cand, th);
@@ -191,7 +204,7 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
           if (h.includes('s')) height = Math.max(MIN, height + s.dy);
           if (h.includes('n')) { y += s.dy; height = Math.max(MIN, height - s.dy); }
         }
-        updateElement(mode.id, { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) });
+        live(mode.id, { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) });
         drawGuides(s.gl, s.gt);
       }
     } else if (mode.kind === 'marquee') {
@@ -218,6 +231,10 @@ export function initInteract({ stageEl, getDoc, getSel, setSel, toggleSel, setMu
         setMultiIds(mode.base); // 视为误触，还原
       }
       marquee.hidden = true;
+    }
+    // 地雷二：拖拽期间只预览 DOM；松手把累计 patch 一次性提交（多选组拖只发一次 emit）
+    if (mode.live && Object.keys(mode.live).length) {
+      updateElements(Object.entries(mode.live).map(([id, patch]) => ({ id, patch })));
     }
     mode = null;
     clearGuides();

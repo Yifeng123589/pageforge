@@ -79,16 +79,40 @@ export function updateSelection(stageEl, selIds) {
   });
 }
 
-// 全量重建（结构变化时用：添加/删除/内容更新）
+// 全量重建（结构变化时用：添加/删除/内容更新；拖拽/缩放的高频位移走 previewGeom 轻路径）
 export function renderStage(stageEl, doc, selIds) {
   const ids = Array.isArray(selIds) ? selIds : (selIds ? [selIds] : []);
   stageEl.style.width = doc.stage.width + 'px';
   stageEl.style.height = doc.stage.height + 'px';
   stageEl.style.background = doc.stage.background;
   stageEl.innerHTML = '';
+  const pending = [];
   for (const el of doc.elements) {
     const div = renderElement(el, ids.includes(el.id));
     stageEl.appendChild(div);
-    if (!ids.includes(el.id)) markOverflowOne(div);
+    if (!ids.includes(el.id)) pending.push(div);
   }
+  // 地雷二：溢出测量先全部读、再全部写——避免"写 class→读 scrollHeight"交错导致 N 个元素 N 次强制同步布局
+  const overs = pending.map((div) => div.scrollHeight > div.clientHeight + 2);
+  pending.forEach((div, i) => div.classList.toggle('overflow', overs[i]));
+}
+
+// 地雷二：拖拽/缩放的"轻路径"——只改目标元素外层几何样式，不重建 DOM、不触发 store emit。
+// 松手时一次性 updateElements 提交（emit 重建一次收尾）。
+export function previewGeom(stageEl, id, patch) {
+  const div = stageEl.querySelector(`[data-el-id="${id}"]`);
+  if (!div) return;
+  if (patch.x != null) div.style.left = patch.x + 'px';
+  if (patch.y != null) div.style.top = patch.y + 'px';
+  if (patch.width != null) div.style.width = patch.width + 'px';
+  if (patch.height != null) div.style.height = patch.height + 'px';
+  if (patch.rotation != null) div.style.transform = `rotate(${patch.rotation}deg)`;
+}
+
+// 地雷二：块内叶子拖拽/旋转的轻路径——直接写叶子 inline transform（提交走 overrides）
+export function previewLeafTransform(stageEl, elId, leafId, value) {
+  const host = stageEl.querySelector(`[data-el-id="${elId}"]`);
+  const leaf = host && host.querySelector(`[data-id="${leafId}"]`);
+  if (!leaf) return;
+  if (value) leaf.style.transform = value; else leaf.style.removeProperty('transform');
 }
