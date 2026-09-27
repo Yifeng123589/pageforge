@@ -1,0 +1,49 @@
+name: Deploy web to GitHub Pages
+
+# 推送到 main 时自动构建 dist-web 并发布到 Pages（审计过的 C1：公开网页版）
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build v1 web (Pages 子路径)
+        run: npm run build
+        env:
+          PF_BASE: /pageforge/
+      - name: Build v2 single-file (画布版)
+        run: npm run build:single
+      - name: Copy v2 editor into dist-web
+        run: cp dist-single/editor-v2.html dist-web/editor-v2.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
