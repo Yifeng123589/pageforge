@@ -34,6 +34,8 @@ jobs:
       - name: Copy v2 editor into dist-web
         run: cp dist-single/editor-v2.html dist-web/editor-v2.html
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true # Pages 未开启时自动开启（避免首跑 "Get Pages site failed"）
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist-web
