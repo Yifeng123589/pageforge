@@ -5,6 +5,10 @@ dist-single/
 release/
 release-pkg/
 
+# 单文件分发产物（dist-single 的副本，可能内联过 Key，绝不入库）
+/PageForge.html
+/PageForge.exe
+
 # 本地调试残留（Edge/Chrome CDP profile）
 .edge-pf*/
 .edge-reg*/
