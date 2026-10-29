@@ -43,15 +43,27 @@ check('产物无 API Key', !/sk-[a-zA-Z0-9]{20,}/.test(built));
 }
 
 // ---------- 1. 起 headless 浏览器 ----------
+// 浏览器探测：Windows 走安装路径，Linux/macOS 走常见二进制名（CI 与本地同一份脚本）
 const candidates = [
+  // 环境变量优先（CI 或非标准安装位置）
+  process.env.PF_BROWSER,
+  // Windows
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-];
+  // macOS
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  // Linux（ubuntu-latest 预装 chromium/google-chrome）
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+].filter(Boolean);
 const browserPath = candidates.find((p) => existsSync(p));
 if (!browserPath) {
-  console.error('✗ 未找到 Edge/Chrome，请安装或手动改 candidates 路径');
+  console.error('✗ 未找到 Edge/Chrome。用 PF_BROWSER=/path/to/chrome 指定，或安装浏览器。');
   process.exit(1);
 }
 const profile = mkdtempSync(join(tmpdir(), 'pf-regression-'));
@@ -62,6 +74,9 @@ const proc = spawn(browserPath, [
   '--no-first-run',
   '--disable-gpu',
   '--window-size=1400,900',
+  // CI 容器内以 root 运行时 Chromium 沙箱不可用（ubuntu-latest runner 需要）
+  '--no-sandbox',
+  '--disable-dev-shm-usage',
   'about:blank',
 ], { stdio: 'ignore' });
 const cleanup = () => {
