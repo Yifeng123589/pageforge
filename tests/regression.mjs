@@ -1503,9 +1503,16 @@ if (!existsSync(V2_DIST)) {
       check('新增：双击旋转点归零', !/rotate\(/.test(String(zero)), `叶子 transform=${zero}（应只剩 translate）`);
 
       // ⑥ 导出：叶子的 transform 必须出现在导出的 HTML 里（改了半天导不出去 = 白改）
-      // 注意：模板字符串里 \(\) \s 会被 JS 吃掉（\(s → s），这里用 indexOf 避免转义坑
-      const exp = JSON.parse(await v2eval(`(() => { const h = window.__v2.exportHtml(); return JSON.stringify({ hasTf: h.indexOf('translate(79px') >= 0, len: h.length }); })()`));
-      check('新增：叶子 transform 随导出带出', exp.hasTf === true, `导出 ${exp.len} 字符，含 translate(79px)=${exp.hasTf}`);
+      // 断言用文档里的真实值比对，不写死像素——不同环境（CI zoom/字体度量）拖拽结果会差几个 px
+      const exp = JSON.parse(await v2eval(`(() => {
+        const e = window.__v2.getDoc().elements.find(x => x.id === '${lf.id}');
+        const tf = (((e.overrides || {})['${lf.btn}']) || {}).transform || '';
+        const h = window.__v2.exportHtml();
+        const m = tf.match(/translate\\(([^)]+)\\)/);
+        const probe = m ? 'translate(' + m[1] + ')' : tf;
+        return JSON.stringify({ tf, probe, hasTf: !!probe && h.indexOf(probe) >= 0, len: h.length });
+      })()`));
+      check('新增：叶子 transform 随导出带出', exp.hasTf === true, `导出 ${exp.len} 字符，${exp.probe} 在导出中=${exp.hasTf}`);
 
       // ⑦ 修复：叶子移动吸附（用户报"小模块的移动吸附没有了"）
       //    做法：拖到"离块容器左边缘 3px"处（在 8px 阈值内）→ 吸附应把这点误差补掉，正好对齐
