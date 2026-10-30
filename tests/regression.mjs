@@ -945,13 +945,15 @@ if (!existsSync(V2_DIST)) {
       `共 ${fixTest.total} 块，未适配 ${fixTest.restCount} 个，抽样插入成功 ${fixTest.inserted} 个并渲染=${fixTest.lastRendered}`);
     check('修复：AI 自由 HTML 不再阻断', fixTest.freeOk && fixTest.freeRendered, `插入高度估算 ${fixTest.freeHeight}px`);
 
-    // —— D1：高频块原生 canvas 适配 ——
+    // —— D1：高频 + 第二批原生 canvas 适配 ——
     const d1 = JSON.parse(await v2eval(`(() => {
       const native = window.__v2.NATIVE_BLOCK_IDS || [];
-      const need = ['pf-navbar','pf-media-cards','pf-hero','pf-carousel','pf-footer','pf-cta-banner','pf-section-features'];
+      const need = [
+        'pf-navbar','pf-media-cards','pf-hero','pf-carousel','pf-footer','pf-cta-banner','pf-section-features',
+        'pf-hero-img','pf-nav-glass','pf-announce','pf-section-split','pf-section-split-r',
+      ];
       const allNative = need.every(id => native.indexOf(id) >= 0);
       const ad = window.__v2.adapter;
-      const before = window.__v2.getDoc().elements.length;
 
       // 导航：槽位填品牌 + 链接 + 按钮
       const navDef = window.__v2.blocks.find(b => b.id === 'pf-navbar');
@@ -980,26 +982,60 @@ if (!existsSync(V2_DIST)) {
       const carOk = !!car && car.html.indexOf('data-pf-carousel') >= 0 && car.html.indexOf('@keyframes pfCFade') >= 0
         && car.html.indexOf('data-id="img_1"') >= 0;
 
-      // 规则层：加个导航 / 加个轮播 → 原生块（零 token）
+      // 大图主视觉
+      const hiDef = window.__v2.blocks.find(b => b.id === 'pf-hero-img');
+      const hiId = ad.placeBlock(hiDef, { title: 'Latte Pro', sub: '更好喝的每一天', btn: '了解 ›' });
+      const hi = window.__v2.getDoc().elements.find(e => e.id === hiId);
+      const hiOk = !!hi && /Latte Pro/.test(hi.html) && hi.html.indexOf('data-id="img_main"') >= 0;
+
+      // 毛玻璃导航
+      const ngDef = window.__v2.blocks.find(b => b.id === 'pf-nav-glass');
+      const ngId = ad.placeBlock(ngDef, { brand: 'ACE', links: ['首页','产品','支持'], btn: '购买' });
+      const ng = window.__v2.getDoc().elements.find(e => e.id === ngId);
+      const ngOk = !!ng && /ACE/.test(ng.html) && /购买/.test(ng.html);
+
+      // 公告条
+      const anDef = window.__v2.blocks.find(b => b.id === 'pf-announce');
+      const anId = ad.placeBlock(anDef, { text: '春季上新限时包邮', btn: '去看看 →' });
+      const an = window.__v2.getDoc().elements.find(e => e.id === anId);
+      const anOk = !!an && /春季上新限时包邮/.test(an.html) && /去看看/.test(an.html);
+
+      // 双栏（图左）
+      const spDef = window.__v2.blocks.find(b => b.id === 'pf-section-split');
+      const spId = ad.placeBlock(spDef, { title: '冷萃系列', sub: '12 小时慢萃', btn: '选购 ›' });
+      const sp = window.__v2.getDoc().elements.find(e => e.id === spId);
+      const spOk = !!sp && /冷萃系列/.test(sp.html) && sp.html.indexOf('data-id="img_main"') >= 0;
+
+      // 规则层
       const rNav = window.__pageforge.matchRule('加个导航栏');
       const rCar = window.__pageforge.matchRule('插入图片轮播');
       const rMedia = window.__pageforge.matchRule('加个媒体卡片区');
-      const rulesOk = rNav && rNav.id === 'pf-navbar' && rCar && rCar.id === 'pf-carousel'
-        && rMedia && rMedia.id === 'pf-media-cards';
+      const rGlass = window.__pageforge.matchRule('加个毛玻璃导航');
+      const rAnn = window.__pageforge.matchRule('加个公告条');
+      const rSplit = window.__pageforge.matchRule('加个双栏产品区');
+      const rHeroImg = window.__pageforge.matchRule('加个大图主视觉');
+      const rulesOk = rNav?.id === 'pf-navbar' && rCar?.id === 'pf-carousel'
+        && rMedia?.id === 'pf-media-cards' && rGlass?.id === 'pf-nav-glass'
+        && rAnn?.id === 'pf-announce' && rSplit?.id === 'pf-section-split'
+        && rHeroImg?.id === 'pf-hero-img';
 
-      // 工具栏新增按钮都在
-      const btns = ['navbar','hero','carousel','mediaCards'].every(k => !!document.querySelector('[data-add="'+k+'"]'));
+      const btns = ['navbar','hero','carousel','mediaCards','announce','navGlass','heroImg','sectionSplit']
+        .every(k => !!document.querySelector('[data-add="'+k+'"]'));
 
       return JSON.stringify({
-        allNative, nativeCount: native.length, before, after: window.__v2.getDoc().elements.length,
-        navOk, mcOk, heroOk, carOk, rulesOk, btns,
+        allNative, nativeCount: native.length,
+        navOk, mcOk, heroOk, carOk, hiOk, ngOk, anOk, spOk, rulesOk, btns,
       });
     })()`));
-    check('D1 原生适配清单（7 块）', d1.allNative && d1.nativeCount >= 7, `原生 ${d1.nativeCount}：${d1.allNative}`);
+    check('D1 原生适配清单（12 块）', d1.allNative && d1.nativeCount >= 12, `原生 ${d1.nativeCount}：${d1.allNative}`);
     check('D1 导航槽位填入', d1.navOk);
     check('D1 媒体卡片槽位填入', d1.mcOk);
     check('D1 大标题区槽位填入', d1.heroOk);
     check('D1 轮播原生模板（动画+三图）', d1.carOk);
+    check('D1 大图主视觉槽位', d1.hiOk);
+    check('D1 毛玻璃导航槽位', d1.ngOk);
+    check('D1 公告条槽位', d1.anOk);
+    check('D1 双栏产品区槽位', d1.spOk);
     check('D1 规则层命中新块', d1.rulesOk);
     check('D1 工具栏添加按钮', d1.btns);
 

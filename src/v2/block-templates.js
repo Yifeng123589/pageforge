@@ -157,7 +157,92 @@ export const BLOCK_TEMPLATES = {
       if (n) n.setAttribute('src', String(src));
     });
   }),
+
+  // —— D1 第二批：大图主视觉 ——
+  heroImg: () => withSlots(T('heroImg', 120, 40, 1200, 560, 1,
+    { background: '#ffffff', borderRadius: '16px', overflow: 'hidden' },
+    `<img data-id="img_main" src="${ph(1200, 360, '主视觉')}" alt="" style="width:100%;height:280px;object-fit:cover;display:block;">
+<div style="text-align:center;padding:40px 40px 48px;">
+  <h2 data-id="h_title" style="font-size:36px;font-weight:700;letter-spacing:-0.5px;margin:0 0 12px;color:#1d1d1f;">产品名称</h2>
+  <p data-id="p_sub" style="font-size:18px;color:#6e6e73;margin:0 0 22px;">一句话介绍，简洁有力。</p>
+  <a data-id="a_btn" href="#" style="color:#2997ff;font-size:17px;text-decoration:none;">了解更多 ›</a>
+</div>`),
+  (elm, s) => {
+    setLeaf(elm, 'h_title', s.title, 24);
+    setLeaf(elm, 'p_sub', s.sub, 60);
+    setLeaf(elm, 'a_btn', s.btn, 12);
+    if (s.img) {
+      const n = elm.querySelector('[data-id="img_main"]');
+      if (n) n.setAttribute('src', String(s.img));
+    }
+  }),
+
+  // —— D1 第二批：毛玻璃导航（canvas 内 sticky 意义弱，做成顶部条即可）——
+  navGlass: () => withSlots(T('navGlass', 120, 20, 1200, 64, 12,
+    { padding: '12px 28px', background: 'rgba(255,255,255,0.72)', borderRadius: '999px', border: '1px solid rgba(0,0,0,0.08)' },
+    `<div style="display:flex;justify-content:space-between;align-items:center;width:100%;height:100%;box-sizing:border-box;backdrop-filter:saturate(180%) blur(20px);">
+  <div data-id="p_brand" style="font-weight:700;font-size:17px;color:#1d1d1f;">你的品牌</div>
+  <div style="display:flex;gap:28px;font-size:14px;font-weight:500;">
+    <a data-id="a_l1" href="#" style="text-decoration:none;color:#1d1d1f;">首页</a>
+    <a data-id="a_l2" href="#" style="text-decoration:none;color:#6e6e73;">产品</a>
+    <a data-id="a_l3" href="#" style="text-decoration:none;color:#6e6e73;">支持</a>
+  </div>
+  <a data-id="a_cta" href="#" style="background:#1d1d1f;color:#ffffff;padding:7px 18px;border-radius:980px;font-size:13px;font-weight:600;text-decoration:none;">购买</a>
+</div>`),
+  (elm, s) => {
+    setLeaf(elm, 'p_brand', s.brand, 16);
+    setLeaf(elm, 'a_cta', s.btn, 8);
+    const links = Array.isArray(s.links) ? s.links : (s.links ? String(s.links).split(/[,，]/) : []);
+    links.slice(0, 3).forEach((lab, i) => setLeaf(elm, `a_l${i + 1}`, lab.trim(), 8));
+  }),
+
+  // —— D1 第二批：公告条 ——
+  announce: () => withSlots(T('announce', 120, 20, 1200, 48, 11,
+    { padding: '10px 20px', background: '#0078d4', borderRadius: '10px', textAlign: 'center' },
+    `<p style="margin:0;font-size:14px;line-height:1.6;color:#ffffff;">
+  <span data-id="p_text">开学季促销：热门商品限时优惠</span>
+  &nbsp;<a data-id="a_btn" href="#" style="color:#ffffff;text-decoration:underline;font-weight:600;">立即选购 →</a>
+</p>`),
+  (elm, s) => {
+    setLeaf(elm, 'p_text', s.text || s.title, 60);
+    setLeaf(elm, 'a_btn', s.btn, 12);
+  }),
+
+  // —— D1 第二批：双栏产品区（图左 / 文左一对）——
+  sectionSplit: () => withSlots(T('sectionSplit', 120, 160, 1200, 380, 2,
+    { padding: '48px 40px', background: '#ffffff', borderRadius: '16px' },
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;height:100%;">
+  <img data-id="img_main" src="${ph(560, 320, '产品图')}" alt="" style="width:100%;height:280px;object-fit:cover;border-radius:20px;display:block;background:#e8e8ed;">
+  <div>
+    <h2 data-id="h_title" style="font-size:32px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
+    <p data-id="p_sub" style="font-size:17px;line-height:1.7;color:#6e6e73;margin:0 0 24px;">右侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</p>
+    <a data-id="a_btn" href="#" style="color:#2997ff;font-size:17px;text-decoration:none;">了解更多 ›</a>
+  </div>
+</div>`),
+  applySplitSlots),
+
+  sectionSplitR: () => withSlots(T('sectionSplitR', 120, 160, 1200, 380, 2,
+    { padding: '48px 40px', background: '#ffffff', borderRadius: '16px' },
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;height:100%;">
+  <div>
+    <h2 data-id="h_title" style="font-size:32px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
+    <p data-id="p_sub" style="font-size:17px;line-height:1.7;color:#6e6e73;margin:0 0 24px;">左侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</p>
+    <a data-id="a_btn" href="#" style="color:#2997ff;font-size:17px;text-decoration:none;">了解更多 ›</a>
+  </div>
+  <img data-id="img_main" src="${ph(560, 320, '产品图')}" alt="" style="width:100%;height:280px;object-fit:cover;border-radius:20px;display:block;background:#e8e8ed;">
+</div>`),
+  applySplitSlots),
 };
+
+function applySplitSlots(elm, s) {
+  setLeaf(elm, 'h_title', s.title, 24);
+  setLeaf(elm, 'p_sub', s.sub, 80);
+  setLeaf(elm, 'a_btn', s.btn, 12);
+  if (s.img) {
+    const n = elm.querySelector('[data-id="img_main"]');
+    if (n) n.setAttribute('src', String(s.img));
+  }
+}
 
 /** AI / 规则层块 id → 原生 canvas 工厂 */
 export const CANVAS_BY_BLOCK = {
@@ -168,6 +253,11 @@ export const CANVAS_BY_BLOCK = {
   'pf-media-cards': BLOCK_TEMPLATES.mediaCards,
   'pf-hero': BLOCK_TEMPLATES.hero,
   'pf-carousel': BLOCK_TEMPLATES.carousel,
+  'pf-hero-img': BLOCK_TEMPLATES.heroImg,
+  'pf-nav-glass': BLOCK_TEMPLATES.navGlass,
+  'pf-announce': BLOCK_TEMPLATES.announce,
+  'pf-section-split': BLOCK_TEMPLATES.sectionSplit,
+  'pf-section-split-r': BLOCK_TEMPLATES.sectionSplitR,
 };
 
 /** 原生适配块 id 列表（回归 / 文档用） */

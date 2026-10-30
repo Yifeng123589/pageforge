@@ -250,6 +250,15 @@ export const blocks = [
     category: '内容',
     label: '公告条',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 11l18-7-4 14-5-4-4 3v-5z\"/><path d=\"M12 14l6-8\"/></svg>",
+    ai: {
+      desc: '顶部公告条。构成：一行促销/通知文案+链接。用于页首提示。',
+      when: ['公告', '公告条', '通知条', '促销条', '顶栏提示'],
+      not: '完整导航栏（用 导航栏 / 毛玻璃导航）',
+      slots: {
+        text: { label: '公告文案', type: 'text', max: 60 },
+        btn: { label: '链接文案', type: 'text', max: 12 },
+      },
+    },
     content: `<div style="background:#0078d4;color:#ffffff;text-align:center;padding:10px 16px;font-size:14px;line-height:1.6;">
   开学季促销：热门商品限时优惠&nbsp;<a href="#" style="color:#ffffff;text-decoration:underline;font-weight:600;">立即选购 →</a>
 </div>`,
@@ -591,6 +600,17 @@ export const blocks = [
     category: '苹果设计',
     label: '大图主视觉',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"12\" rx=\"2\"/><circle cx=\"8\" cy=\"8\" r=\"1.2\"/><path d=\"M3 13l5-5 13 13\"/><path d=\"M8 19h8M12 17.5V21\"/></svg>",
+    ai: {
+      desc: '大图+下方标题区。构成：全宽图+产品名+简介+链接。用于产品主视觉。',
+      when: ['大图主视觉', '产品大图', '主视觉图', 'hero 图'],
+      not: '纯文字大标题（用 苹果大标题区）或文字叠图',
+      slots: {
+        title: { label: '产品名', type: 'text', max: 24 },
+        sub: { label: '简介', type: 'text', max: 60 },
+        btn: { label: '链接文案', type: 'text', max: 12 },
+        img: { label: '图片 URL', type: 'text', max: 200 },
+      },
+    },
     content: `<section style="padding:0;">
   <img src="${placeholderImg()}" alt="主视觉" style="width:100%;display:block;">
   <div style="text-align:center;padding:64px 24px 80px;">
@@ -619,6 +639,16 @@ export const blocks = [
     category: '苹果设计',
     label: '毛玻璃导航',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"7\"/><path d=\"M7 9h10M7 13h7M7 17h10\"/></svg>",
+    ai: {
+      desc: '毛玻璃质感导航。构成：品牌+3 链接+胶囊按钮。用于苹果风页顶。',
+      when: ['毛玻璃导航', '玻璃导航', '苹果导航', '半透明导航'],
+      not: '普通白底导航（用 导航栏）',
+      slots: {
+        brand: { label: '品牌名', type: 'text', max: 16 },
+        links: { label: '三个链接名', type: 'list', max: 3 },
+        btn: { label: '右侧按钮', type: 'text', max: 8 },
+      },
+    },
     content: `<nav style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 24px;background:rgba(255,255,255,0.72);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,0.08);position:sticky;top:0;z-index:50;">
   <div style="font-weight:700;font-size:17px;color:#1d1d1f;">Logo</div>
   <div style="display:flex;gap:28px;font-size:14px;font-weight:500;">
@@ -644,6 +674,17 @@ export const blocks = [
     category: '苹果设计',
     label: '双栏产品区(图左)',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"9\" height=\"14\" rx=\"1.5\"/><circle cx=\"7.5\" cy=\"9\" r=\"1.2\"/><path d=\"M14 8h7M14 12h5M14 16h7\"/></svg>",
+    ai: {
+      desc: '双栏产品区（图左文右）。构成：左图+右标题/简介/链接。用于产品卖点介绍。',
+      when: ['双栏', '图左文右', '产品分栏', '图文分栏'],
+      not: '三栏特性卡（用 三栏特性区）',
+      slots: {
+        title: { label: '标题', type: 'text', max: 24 },
+        sub: { label: '说明', type: 'text', max: 80 },
+        btn: { label: '链接文案', type: 'text', max: 12 },
+        img: { label: '图片 URL', type: 'text', max: 200 },
+      },
+    },
     content: `<section style="max-width:1100px;margin:0 auto;padding:80px 24px;">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;">
     <div style="border-radius:20px;background:linear-gradient(135deg,#e8e8ed,#f5f5f7);min-height:320px;display:flex;align-items:center;justify-content:center;color:#86868b;font-size:16px;font-weight:600;">产品图 / 截图</div>
@@ -660,6 +701,17 @@ export const blocks = [
     category: '苹果设计',
     label: '双栏产品区(文左)',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M3 8h7M3 12h5M3 16h7\"/><rect x=\"12\" y=\"5\" width=\"9\" height=\"14\" rx=\"1.5\"/><circle cx=\"16.5\" cy=\"9\" r=\"1.2\"/></svg>",
+    ai: {
+      desc: '双栏产品区（文左图右）。构成：左标题/简介/链接+右图。用于产品卖点介绍。',
+      when: ['文左图右', '双栏文左', '分栏文左'],
+      not: '图左文右（用 双栏产品区(图左)）',
+      slots: {
+        title: { label: '标题', type: 'text', max: 24 },
+        sub: { label: '说明', type: 'text', max: 80 },
+        btn: { label: '链接文案', type: 'text', max: 12 },
+        img: { label: '图片 URL', type: 'text', max: 200 },
+      },
+    },
     content: `<section style="max-width:1100px;margin:0 auto;padding:80px 24px;">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;">
     <div>
