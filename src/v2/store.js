@@ -3,47 +3,17 @@ import { elId, T } from './factory.js';
 import { STARTERS } from './starters.js';
 import { applyThemeToDoc, themeList } from './theme-apply.js';
 import { pushFrame } from './undo-stack.mjs';
+import { BLOCK_TEMPLATES, CANVAS_BY_BLOCK, NATIVE_BLOCK_IDS } from './block-templates.js';
 // v2 数据层：canvas 页文档 + 全量快照撤销（Q6：snapshot，200 帧 + 50MB 双预算）
 // 规范见 docs/v2/canvas-schema-draft.md（v1.0 实现基线）
+// 原生块模板见 block-templates.js（D1）
 
 const DOC_KEY = 'pageforge-v2-doc';
 
 // 元素工厂（elId / T）与 ID 生成器已抽到 factory.js——starters.js 也要用，避免循环依赖。
 // 这里 re-export，保持既有 import 路径不变。
 export { elId, T };
-
-// —— 首批画布块模板（对应 51 块的 canvas 适配版；AI 槽位映射见规范 §4）——
-// 元素构造函数 T 见 factory.js
-
-export const BLOCK_TEMPLATES = {
-  cta: () => withSlots(T('cta', 120, 40, 1200, 240, 1,
-    { padding: '56px 48px', background: 'linear-gradient(135deg,#eef2ff 0%,#ffffff 100%)', borderRadius: '16px', textAlign: 'center' },
-    `<h2 data-id="h_title" style="font-size:40px;font-weight:800;letter-spacing:-0.5px;margin:0 0 12px;color:#111827;">现在就开始</h2> <p data-id="p_sub" style="font-size:17px;color:#6b7280;margin:0 0 28px;">几分钟就能拥有一个漂亮的页面。</p> <a data-id="a_btn" href="#" style="display:inline-block;background:#4f46e5;color:#ffffff;padding:13px 32px;border-radius:999px;font-size:16px;font-weight:600;text-decoration:none;">立即开始</a>`),
-    (elm, s) => {
-      const set = (id, v, max = 50) => { if (v == null || v === '') return; const n = elm.querySelector(`[data-id="${id}"]`); if (n) n.textContent = String(v).slice(0, max); };
-      set('h_title', s.title, 20); set('p_sub', s.sub); set('a_btn', s.btn, 10);
-    }),
-  features3: () => withSlots(T('features3', 120, 300, 1200, 380, 2,
-    { padding: '56px 48px', background: '#ffffff', borderRadius: '16px' },
-    `<h2 data-id="h_title" style="text-align:center;font-size:36px;font-weight:800;letter-spacing:-0.5px;margin:0 0 10px;color:#111827;">功能特性</h2> <p data-id="p_sub" style="text-align:center;font-size:17px;color:#6b7280;margin:0 0 40px;">三栏介绍你的核心功能。</p> <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;"> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c1" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">极速</h3> <p data-id="p_c1" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">秒开页面，极致性能。</p> </div> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c2" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">安全</h3> <p data-id="p_c2" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">端到端加密。</p> </div> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c3" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">省心</h3> <p data-id="p_c3" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">全自动备份。</p> </div> </div>`),
-    (elm, s) => {
-      const set = (id, v, max = 50) => { if (v == null || v === '') return; const n = elm.querySelector(`[data-id="${id}"]`); if (n) n.textContent = String(v).slice(0, max); };
-      set('h_title', s.title, 20); set('p_sub', s.sub);
-      (Array.isArray(s.items) ? s.items : []).slice(0, 3).forEach((it, i) => {
-        const seg = String(it).split(/[：:]/);
-        set(`h_c${i + 1}`, seg[0], 12);
-        set(`p_c${i + 1}`, seg.length >= 2 ? seg.slice(1).join('：') : '', 50);
-      });
-    }),
-  footer: () => withSlots(T('footer', 120, 700, 1200, 190, 3,
-    { padding: '40px 48px', background: '#0d0d0f', borderRadius: '16px' },
-    `<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;align-items:start;"> <div> <p data-id="p_brand" style="color:#ffffff;font-size:20px;font-weight:800;margin:0 0 10px;">你的品牌</p> <p data-id="p_intro" style="color:#a1a1aa;font-size:14px;line-height:1.7;margin:0;">一句话介绍你的产品，让访客知道你是做什么的。</p> </div> <div> <p data-id="p_l1" style="color:#e4e4e7;font-size:14px;font-weight:700;margin:0 0 8px;">产品</p> <p data-id="p_l2" style="color:#a1a1aa;font-size:14px;margin:0 0 6px;">功能</p> <p data-id="p_l3" style="color:#a1a1aa;font-size:14px;margin:0;">价格</p> </div> <div> <p data-id="p_l4" style="color:#e4e4e7;font-size:14px;font-weight:700;margin:0 0 8px;">公司</p> <p data-id="p_l5" style="color:#a1a1aa;font-size:14px;margin:0 0 6px;">关于我们</p> <p data-id="p_l6" style="color:#a1a1aa;font-size:14px;margin:0;">联系</p> </div> </div> <p data-id="p_copy" style="color:#71717a;font-size:13px;margin:24px 0 0;padding-top:20px;border-top:1px solid #27272a;text-align:center;">© 2026 你的品牌. All rights reserved.</p>`),
-    (elm, s) => {
-      const set = (id, v, max = 60) => { if (v == null || v === '') return; const n = elm.querySelector(`[data-id="${id}"]`); if (n) n.textContent = String(v).slice(0, max); };
-      if (s.brand) { set('p_brand', s.brand, 20); set('p_copy', `© ${new Date().getFullYear()} ${s.brand}. All rights reserved.`, 80); }
-      set('p_intro', s.intro);
-    }),
-};
+export { BLOCK_TEMPLATES, CANVAS_BY_BLOCK, NATIVE_BLOCK_IDS };
 
 // 图片元素：src 可为 base64（离线可用，Q5 决策）或 URL
 // 注意：圆角/裁剪放在 img 自身（容器不 overflow:hidden）——容器裁剪会把伸出边缘的缩放/旋转手柄一起裁掉（实际踩过的 bug）
@@ -84,15 +54,6 @@ export function makeElementFromHTML(html, opts = {}) {
   const marked = annotateLeaves(html);
   return T(type, x, y, w, estimateHeight(marked), z, {}, marked);
 }
-
-// AI 块注册表 id → canvas 模板（EditorAdapter.placeBlock 用）
-export const CANVAS_BY_BLOCK = {
-  'pf-cta-banner': BLOCK_TEMPLATES.cta,
-  'pf-section-features': BLOCK_TEMPLATES.features3,
-  'pf-footer': BLOCK_TEMPLATES.footer,
-};
-
-function withSlots(el, apply) { el.applySlots = apply; return el; }
 
 // 起步模板构建（A0-3）：未知 id 兜底为空白画布
 function buildStarter(starterId) {

@@ -909,7 +909,7 @@ if (!existsSync(V2_DIST)) {
       const panelTop = getComputedStyle(document.getElementById('ai-panel')).top;
 
       // ③ 块降级：未做 canvas 原生适配的块也能插（抽 3 个验证）
-      const adapted = ['pf-cta-banner', 'pf-section-features', 'pf-footer'];
+      const adapted = window.__v2.NATIVE_BLOCK_IDS || ['pf-cta-banner', 'pf-section-features', 'pf-footer'];
       const rest = all.filter(b => adapted.indexOf(b.id) < 0);
       const sample = rest.slice(0, 3);
       const before = window.__v2.getDoc().elements.length;
@@ -944,6 +944,64 @@ if (!existsSync(V2_DIST)) {
     check('修复：未适配块降级插入（51 块全可用）', fixTest.inserted === 3 && fixTest.grew === 3 && fixTest.lastRendered,
       `共 ${fixTest.total} 块，未适配 ${fixTest.restCount} 个，抽样插入成功 ${fixTest.inserted} 个并渲染=${fixTest.lastRendered}`);
     check('修复：AI 自由 HTML 不再阻断', fixTest.freeOk && fixTest.freeRendered, `插入高度估算 ${fixTest.freeHeight}px`);
+
+    // —— D1：高频块原生 canvas 适配 ——
+    const d1 = JSON.parse(await v2eval(`(() => {
+      const native = window.__v2.NATIVE_BLOCK_IDS || [];
+      const need = ['pf-navbar','pf-media-cards','pf-hero','pf-carousel','pf-footer','pf-cta-banner','pf-section-features'];
+      const allNative = need.every(id => native.indexOf(id) >= 0);
+      const ad = window.__v2.adapter;
+      const before = window.__v2.getDoc().elements.length;
+
+      // 导航：槽位填品牌 + 链接 + 按钮
+      const navDef = window.__v2.blocks.find(b => b.id === 'pf-navbar');
+      const navId = ad.placeBlock(navDef, { brand: 'Latte', links: ['菜单','门店','关于'], btn: '点单' });
+      const nav = window.__v2.getDoc().elements.find(e => e.id === navId);
+      const navOk = !!nav && /Latte/.test(nav.html) && /点单/.test(nav.html) && /菜单/.test(nav.html)
+        && nav.html.indexOf('data-id="p_brand"') >= 0;
+
+      // 媒体卡片：items 拆「标题：简介」
+      const mcDef = window.__v2.blocks.find(b => b.id === 'pf-media-cards');
+      const mcId = ad.placeBlock(mcDef, { title: '本季精选', sub: '三杯必喝', items: ['拿铁：丝滑', '美式：醒脑', '冷萃：清爽'] });
+      const mc = window.__v2.getDoc().elements.find(e => e.id === mcId);
+      const mcOk = !!mc && /本季精选/.test(mc.html) && /拿铁/.test(mc.html) && /丝滑/.test(mc.html)
+        && mc.html.indexOf('data-id="h_c1"') >= 0;
+
+      // hero：大标题 + 双链
+      const heroDef = window.__v2.blocks.find(b => b.id === 'pf-hero');
+      const heroId = ad.placeBlock(heroDef, { title: '每一天从一杯开始', sub: '街角的温暖', btn: '找店 ›', secondary: '菜单 ›' });
+      const hero = window.__v2.getDoc().elements.find(e => e.id === heroId);
+      const heroOk = !!hero && /每一天从一杯开始/.test(hero.html) && /找店/.test(hero.html);
+
+      // 轮播：原生模板含动画 style + 三图 data-id
+      const carDef = window.__v2.blocks.find(b => b.id === 'pf-carousel');
+      const carId = ad.placeBlock(carDef, {});
+      const car = window.__v2.getDoc().elements.find(e => e.id === carId);
+      const carOk = !!car && car.html.indexOf('data-pf-carousel') >= 0 && car.html.indexOf('@keyframes pfCFade') >= 0
+        && car.html.indexOf('data-id="img_1"') >= 0;
+
+      // 规则层：加个导航 / 加个轮播 → 原生块（零 token）
+      const rNav = window.__pageforge.matchRule('加个导航栏');
+      const rCar = window.__pageforge.matchRule('插入图片轮播');
+      const rMedia = window.__pageforge.matchRule('加个媒体卡片区');
+      const rulesOk = rNav && rNav.id === 'pf-navbar' && rCar && rCar.id === 'pf-carousel'
+        && rMedia && rMedia.id === 'pf-media-cards';
+
+      // 工具栏新增按钮都在
+      const btns = ['navbar','hero','carousel','mediaCards'].every(k => !!document.querySelector('[data-add="'+k+'"]'));
+
+      return JSON.stringify({
+        allNative, nativeCount: native.length, before, after: window.__v2.getDoc().elements.length,
+        navOk, mcOk, heroOk, carOk, rulesOk, btns,
+      });
+    })()`));
+    check('D1 原生适配清单（7 块）', d1.allNative && d1.nativeCount >= 7, `原生 ${d1.nativeCount}：${d1.allNative}`);
+    check('D1 导航槽位填入', d1.navOk);
+    check('D1 媒体卡片槽位填入', d1.mcOk);
+    check('D1 大标题区槽位填入', d1.heroOk);
+    check('D1 轮播原生模板（动画+三图）', d1.carOk);
+    check('D1 规则层命中新块', d1.rulesOk);
+    check('D1 工具栏添加按钮', d1.btns);
 
     // A0-9 AI 诊断在 canvas 打通（直接验适配器路径，不实际调用模型）
     const diagTest = JSON.parse(await v2eval(`(async () => {

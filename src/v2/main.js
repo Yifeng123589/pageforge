@@ -5,7 +5,7 @@
 import {
   getDoc, getDocs, getCurId, onChange, onStackChange, snapshot, undo, redo,
   updateElement, updateElements, addElement, removeElement, setStage, addDoc, switchDoc, removeDoc,
-  placeElement, BLOCK_TEMPLATES, makeImage, elId, applyStarterToCurrentDoc, applyTheme, themeList,
+  placeElement, BLOCK_TEMPLATES, CANVAS_BY_BLOCK, NATIVE_BLOCK_IDS, makeImage, elId, applyStarterToCurrentDoc, applyTheme, themeList,
   makeElementFromHTML, onSaveStatus,
 } from './store.js';
 import { STARTERS } from './starters.js';
@@ -731,7 +731,7 @@ function hideSaveWarn() {
 onSaveStatus((st) => { if (st.ok) hideSaveWarn(); else showSaveWarn(); });
 
 // —— 测试/控制台接口 ——
-window.__v2 = { getDoc, getDocs, getCurId, exportHtml, snapshot, undo, redo, updateElement, setSel, setMulti: setMultiIds, adapter: canvasAdapter, ctx, blocks, interact, lockAxis, selectLeaf, snapAngle, leafInteract };
+window.__v2 = { getDoc, getDocs, getCurId, exportHtml, snapshot, undo, redo, updateElement, setSel, setMulti: setMultiIds, adapter: canvasAdapter, ctx, blocks, interact, lockAxis, selectLeaf, snapAngle, leafInteract, BLOCK_TEMPLATES, CANVAS_BY_BLOCK, NATIVE_BLOCK_IDS };
 
 // —— AI 面板（CanvasAdapter：拼块/改样式/答疑；配色/诊断/初稿按能力门控隐藏）——
 initAIPanel({ editor: null, toast, adapter: canvasAdapter });

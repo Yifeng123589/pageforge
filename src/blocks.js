@@ -41,6 +41,14 @@ export const blocks = [
     category: '动效',
     label: '图片轮播',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M3 12l5-5 4 4 3-3 6 6\"/><circle cx=\"16\" cy=\"9\" r=\"1.4\"/></svg>",
+    ai: {
+      desc: '全宽图片轮播。构成：3 张淡入切换的封面图。用于页首视觉或品牌秀。',
+      when: ['轮播', '幻灯片', 'banner 图', '图片切换', 'carousel'],
+      not: '单张静态大图（用 大图主视觉）',
+      slots: {
+        imgs: { label: '三张图片 URL（数组）', type: 'list', max: 3 },
+      },
+    },
     content: `<div data-pf-carousel data-an="fade" style="position:relative;height:560px;overflow:hidden;">
   <img src="${placeholderImg(1200, 700, '视觉 1')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉1">
   <img src="${placeholderImg(1200, 700, '视觉 2')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉2">
@@ -135,6 +143,16 @@ export const blocks = [
     category: '布局',
     label: '媒体卡片',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"8\" height=\"8\" rx=\"1.5\"/><rect x=\"13\" y=\"3\" width=\"8\" height=\"8\" rx=\"1.5\"/><rect x=\"3\" y=\"13\" width=\"8\" height=\"8\" rx=\"1.5\"/><rect x=\"13\" y=\"13\" width=\"8\" height=\"8\" rx=\"1.5\"/><rect x=\"5\" y=\"5\" width=\"4\" height=\"4\" fill=\"currentColor\" stroke=\"none\" opacity=\"0.35\"/></svg>",
+    ai: {
+      desc: '三栏媒体卡片。构成：标题+副标题+3 张封面卡（图+标题+简介）。用于作品/案例/资讯列表。',
+      when: ['媒体卡片', '作品集', '案例卡', '封面卡片', '精选作品'],
+      not: '三栏纯文字特性区（用 三栏特性区）',
+      slots: {
+        title: { label: '区标题', type: 'text', max: 20 },
+        sub: { label: '副标题', type: 'text', max: 40 },
+        items: { label: '三卡「标题：简介」', type: 'list', max: 3 },
+      },
+    },
     content: `<section style="max-width:1100px;margin:0 auto;padding:64px 24px;">
   <h2 style="font-size:32px;font-weight:700;text-align:center;margin:0 0 8px;color:#1e293b;">精选作品</h2>
   <p style="text-align:center;color:#64748b;margin:0 0 40px;line-height:1.7;">一句话介绍这个系列</p>
@@ -323,6 +341,16 @@ export const blocks = [
     category: '组件',
     label: '导航栏',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M7 9h10M7 13h7M7 17h10\"/></svg>",
+    ai: {
+      desc: '顶部导航栏。构成：品牌名+3 链接+行动按钮。用于页面顶部导航。',
+      when: ['导航', '导航栏', '菜单栏', '顶部菜单', 'navbar'],
+      not: '页内锚点 Tab（用 页内导航）',
+      slots: {
+        brand: { label: '品牌名', type: 'text', max: 16 },
+        links: { label: '三个链接名（数组或逗号分隔）', type: 'list', max: 3 },
+        btn: { label: '右侧按钮文案', type: 'text', max: 8 },
+      },
+    },
     content: `<nav style="display:flex;justify-content:space-between;align-items:center;padding:14px 24px;background:#f8fafc;border-radius:12px;">
   <div style="font-weight:700;font-size:18px;color:#1e293b;">Logo</div>
   <div style="display:flex;gap:24px;font-size:15px;">
@@ -538,6 +566,17 @@ export const blocks = [
     category: '苹果设计',
     label: '苹果大标题区',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M6 9h12M6 13h8M6 17h10\"/></svg>",
+    ai: {
+      desc: '苹果风格大标题区。构成：大标题+副文案+两个文字链。用于页首主视觉文案。',
+      when: ['大标题', '主视觉文案', 'hero', '苹果标题', '开场标题'],
+      not: '带大图的主视觉（用 大图主视觉 / 文字叠图）',
+      slots: {
+        title: { label: '大标题', type: 'text', max: 24 },
+        sub: { label: '副文案', type: 'text', max: 60 },
+        btn: { label: '主链接文案', type: 'text', max: 12 },
+        secondary: { label: '次链接文案', type: 'text', max: 12 },
+      },
+    },
     content: `<section style="text-align:center;padding:110px 24px 100px;max-width:1000px;margin:0 auto;">
   <h1 style="font-size:56px;font-weight:700;letter-spacing:-0.8px;line-height:1.1;margin:0 0 18px;color:#1d1d1f;">让你的想法<br>大放异彩</h1>
   <p style="font-size:22px;line-height:1.6;color:#6e6e73;margin:0 auto 32px;max-width:620px;">用一句话描述你的产品，像苹果官网一样克制而有力。</p>
