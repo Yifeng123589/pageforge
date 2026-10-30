@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   THEME: 'pageforge-theme',
   WELCOMED: 'pageforge-welcomed-v1',
   GUIDE_DONE: 'pageforge-guide-done-v1',
+  BYOK_TIP: 'pageforge-byok-tip-v1',    // C1：首次打开的 AI Key / 隐私轻提示（跨 v1/v2）
   VISITED: 'pageforge-visited',
   MEDIA_CLEANED: 'pf-media-cleaned-v1', // 旧媒体查询一次性迁移标记
   LOG_LEVEL: 'pf-log-level',

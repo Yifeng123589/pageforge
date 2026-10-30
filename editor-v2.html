@@ -162,6 +162,19 @@
   .v2-ctx-item:hover { background: #2a2a33; }
   .v2-ctx-item.danger { color: #f87171; }
   .v2-ctx-hint { color: #6b6b75; font-size: 11px; }
+  /* C1：首次 BYOK / 隐私轻提示（不挡编辑，可关掉） */
+  #v2-byok {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    z-index: 50000; max-width: min(560px, calc(100vw - 32px));
+    background: #1b1b22; border: 1px solid #34343d; border-radius: 12px;
+    padding: 14px 16px; box-shadow: 0 16px 40px rgba(0,0,0,.55);
+    font-size: 13px; line-height: 1.55; color: #e8e8ec;
+  }
+  #v2-byok[hidden] { display: none; }
+  #v2-byok b { color: #fff; }
+  #v2-byok p { margin: 0 0 10px; color: #c4c4cc; }
+  #v2-byok .byok-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  #v2-byok .byok-acts button { font-size: 12.5px; }
 </style>
   <link rel="stylesheet" href="/src/theme.css">
   <style>
@@ -493,6 +506,15 @@
         <button id="ai-gen-do" class="btn primary">生成初稿</button>
         <button id="ai-gen-apply" class="btn ghost" disabled title="先点「生成初稿」，满意后再替换">替换当前页面</button>
       </div>
+    </div>
+  </div>
+  <!-- C1：首次打开 BYOK / 隐私提示（无 Key 时出现，关掉后不再打扰） -->
+  <div id="v2-byok" hidden role="dialog" aria-label="AI 可选配置提示">
+    <p><b>不填 Key 也能用全部编辑功能。</b>要用 AI（拼块/配色/诊断），点右上角 AI 助手 → ⚙ 填一次 API Key。推荐免费的智谱 <code>glm-4-flash</code>。</p>
+    <p style="margin-bottom:12px;font-size:12px;color:#8a8a94;">Key 只存在本浏览器的 localStorage，换浏览器要重填；页面数据同样只存本地，AI 请求发往你自己填的服务商。</p>
+    <div class="byok-acts">
+      <button type="button" id="v2-byok-skip" class="btn ghost">知道了</button>
+      <button type="button" id="v2-byok-go" class="btn primary">去填 Key</button>
     </div>
   </div>
   <script type="module" src="/src/v2/main.js"></script>

@@ -369,6 +369,20 @@ if (!existsSync(V2_DIST)) {
   check('v2 编辑器加载', v2Ready);
 
   if (v2Ready) {
+    // C1：BYOK 轻提示——点「知道了」后写 localStorage 并隐藏（DOM + 关闭逻辑）
+    const byok = JSON.parse(await v2eval(`(() => {
+      const tip = document.getElementById('v2-byok');
+      const skip = document.getElementById('v2-byok-skip');
+      if (!tip || !skip) return JSON.stringify({ ok: false, why: 'no-dom' });
+      try { localStorage.removeItem('pageforge-byok-tip-v1'); } catch {}
+      tip.hidden = false;
+      skip.click();
+      const gone = tip.hidden === true;
+      const flagged = localStorage.getItem('pageforge-byok-tip-v1') === '1';
+      return JSON.stringify({ ok: gone && flagged, gone, flagged });
+    })()`));
+    check('C1 BYOK 提示可关闭并记档', byok.ok, byok.why || `gone=${byok.gone} flagged=${byok.flagged}`);
+
     // 公共前奏：双击第一个块的标题叶子进入编辑态
     const enterEdit = `(async () => {
       const stage = document.getElementById('v2-stage');
@@ -444,6 +458,24 @@ if (!existsSync(V2_DIST)) {
       return JSON.stringify({ ok: !stage.classList.contains('v2-editing') });
     })()`));
     check('对照：普通 Escape 正常退出编辑', ctrlEsc.ok, ctrlEsc.why || '');
+
+    // B 批 / 缺失项 6：编辑内 Ctrl+Z 不得整页撤销退出编辑（应放行原生击键撤销）
+    const editUndo = JSON.parse(await v2eval(`(async () => {
+      const state = await (${enterEdit});
+      if (state !== 'ok') return JSON.stringify({ ok: false, why: state });
+      const before = JSON.stringify(window.__v2.getDoc());
+      const leaf = document.querySelector('#v2-stage [contenteditable="true"]');
+      leaf.focus();
+      leaf.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true }));
+      await new Promise(r => setTimeout(r, 80));
+      const stillEditing = document.getElementById('v2-stage').classList.contains('v2-editing');
+      const after = JSON.stringify(window.__v2.getDoc());
+      // 退出编辑（清理现场，避免污染后续断言）
+      leaf.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await new Promise(r => setTimeout(r, 80));
+      return JSON.stringify({ ok: stillEditing && before === after, stillEditing, docIntact: before === after });
+    })()`));
+    check('编辑内 Ctrl+Z 不退出编辑', editUndo.ok, `仍在编辑=${editUndo.stillEditing} 文档未整页撤销=${editUndo.docIntact}`);
 
     // A0-2 平移：Space+拖拽滚动画布，且绝不改动元素坐标
     const panSpace = JSON.parse(await v2eval(`(async () => {

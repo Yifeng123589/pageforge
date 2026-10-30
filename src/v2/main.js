@@ -21,10 +21,11 @@ import { initTextEditing, isEditing } from './textedit.js';
 import { initPan } from './pan.js';
 import { initContextMenu } from './contextmenu.js';
 import { initStylePanel } from './stylepanel.js';
-import { initAIPanel } from '../ai-panel.js';
+import { initAIPanel, activeAI } from '../ai-panel.js';
 import { createCanvasAdapter } from './adapter.js';
 import { canvasStageInner, canvasAssets, formatHtml } from './export-canvas.js';
 import { escHtml } from '../esc.js';
+import { STORAGE_KEYS } from '../storage-keys.js';
 
 const $ = (s) => document.querySelector(s);
 const viewport = $('#v2-viewport');
@@ -323,8 +324,8 @@ onStackChange(syncUndoButtons);
 $('#v2-undo').addEventListener('click', () => undo());
 $('#v2-redo').addEventListener('click', () => redo());
 document.addEventListener('keydown', (e) => {
-  const tag = (e.target.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  // B 批文字组 / 原缺失项 6：编辑叶子时放行原生撤销（击键级），绝不整页 undo 退出编辑
+  if (isEditing() || inTextInput(e.target)) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
   if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
 });
@@ -735,7 +736,33 @@ window.__v2 = { getDoc, getDocs, getCurId, exportHtml, snapshot, undo, redo, upd
 // —— AI 面板（CanvasAdapter：拼块/改样式/答疑；配色/诊断/初稿按能力门控隐藏）——
 initAIPanel({ editor: null, toast, adapter: canvasAdapter });
 
+// —— C1：首次 BYOK / 隐私轻提示（无 Key 且未关掉过才出现；不挡编辑）——
+function dismissByokTip() {
+  try { localStorage.setItem(STORAGE_KEYS.BYOK_TIP, '1'); } catch { /* 存储满忽略 */ }
+  const el = $('#v2-byok');
+  if (el) el.hidden = true;
+}
+function showByokTipIfNeeded() {
+  const el = $('#v2-byok');
+  if (!el) return;
+  try {
+    if (localStorage.getItem(STORAGE_KEYS.BYOK_TIP)) return;
+  } catch { /* 隐私模式读失败也照常提示一次 */ }
+  if (activeAI().key) return; // 已有 Key（含旧版迁移 / 本机配置）不打扰
+  el.hidden = false;
+}
+// 按钮监听常驻（不依赖提示是否已显示），避免回归 / 晚到点击踩竞态
+$('#v2-byok-skip')?.addEventListener('click', dismissByokTip);
+$('#v2-byok-go')?.addEventListener('click', () => {
+  dismissByokTip();
+  $('#btn-ai')?.click();
+  setTimeout(() => $('#ai-key')?.click(), 60);
+});
+// 测试钩子：可强制再弹一次
+window.__v2ShowByok = () => { try { localStorage.removeItem(STORAGE_KEYS.BYOK_TIP); } catch {} ; showByokTipIfNeeded(); };
+
 // —— 启动 ——
 requestRender();
 applyZoom();
 $('#v2-fit').click();
+setTimeout(showByokTipIfNeeded, 400);
