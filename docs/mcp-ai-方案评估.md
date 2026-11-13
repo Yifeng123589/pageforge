@@ -1,204 +1,247 @@
-# PageForge MCP/AI 方案评估
+# PageForge MCP/AI 方案评估（v2 · 修订后复审）
 
-> 评估对象：`PageForge-MCP-AI-方案.md` v0.1 (2026-11-13)
+> 评估对象：`PageForge-MCP-AI-方案.md`（v0.1 修订版，2026-11-13 19:44）
 > 对照实现：`dsh-design-kit` v0.1.13（source 包）
-> 评估方式：不读文档下判断，直接用 PageForge 真实块跑 kit 的 `init → plan → import → verify` 闸门 + 390/768/1440 三宽实测
+> 评估方式：用 PageForge 真实块跑 kit 的 `init → plan → import → verify` 闸门 + 三宽实测 + 逐块内容槽能力测绘
+> 本次新增：按修订版逐条复核，并补测了 4 项修订版未覆盖的约束
 > 结论日期：2026-11-13
 
 ---
 
 ## 0. 一句话结论
 
-**方向对，可以做。但方案里有两处前提是错的，必须先修，否则 `compose_bundle` 只能产出"过闸门但视觉不可信"的页面。**
+**修订版通过。三个阻塞写进 §4.0、Phase -1 排在最前、§4.4 加了"rect + 裁剪祖先"——我上轮提的问题都改对了。**
 
-方案的技术判断（工具化、不调模型、validate 闭环、先做 compose_bundle 再谈 MCP）全部成立，且已被实测支持。
-错的是两处**没被验证的实现假设**：
+但它仍然会**产出一个"闸门全过、视觉不可用"的池子**，因为还有 4 个约束没被写进去，其中一个是硬伤：
 
-1. **候选池不能用 canvas 页**（方案全篇没说清导出哪种页，而 canvas 导出天生进不了池）。
-2. **主题映射对新苹果块已失效**（打掉方案 §4.2 里 "lineage = 同块 + 3 套主题" 这条主线的一半）。
+1. **360px 下三栏卡每张只有 90px，标题折 2–3 行**（kit 真实渲染宽度是 360×480，不是 390）。"不溢出"测不出来——它不溢出，只是挤成一坨。
+2. **`foot` 槽全库只有 `pf-footer` 一个来源**；`bullet+meta` 只有 2 个块能给。方案的 contrast 三组合里 **2 个过不了内容槽**（实测）。
+3. **换肤失效是 17 个块，不是 8 个**；5 个 hero 候选里 3 个（含 `pf-hero`、`pf-hero-img`）三主题零变化。
+4. **没有任何单块能承载 ≥5/6 内容槽**，块组合是硬需求，不是风格选择。
+
+前三条是文档里数字写错或没写；第四条是方案隐含假设错了。
 
 ---
 
-## 1. 实测证据
+## 1. 修订版核对结果
 
-### 1.1 ✅ 链路能通：真实块 12 页过全部闸门
+### 1.1 ✅ 改对了的
 
-用 `src/blocks.js` 的真实块 HTML（`pf-hero` / `pf-hero-img` / `pf-nav-glass` / `pf-section-features` / `pf-media-cards` / `pf-section-split` / `pf-carousel` / `pf-cta-banner` / `pf-footer`）+ `src/themes.js` 换色，拼 6 种组合 × 5 主题，产出 12 页：
-
-```
-=== import ===  已导入外部池 12/12   writer: external · skill: pageforge
-=== verify ===
-  ✔ 轮次/候选/上限符合 4×3=12 与待定 3
-  ✔ 每轮关系成立且 HTML 互不相同
-  ✔ 候选与页面 HTML 的 sha 一致、无外链且未被篡改
-  ✔ 外部池来源、12 页、内容槽与关系一致
-  ✔ 决策与候选一一对应、轮次连续、每轮待定 ≤1
-  ✔ 待定数正确且 ≤3
-  ✔ 收口产物与状态一致
-结论: 通过
-```
-
-**这是最重要的正面结论：方案 §9 的最小可交付链路是真的能跑通的**，不是纸面推演。
-
-### 1.2 ❌ canvas 页导出不能进候选池（方案盲点）
-
-`src/v2/export-canvas.js` 的导出形态是 **1440 定宽 stage + `<script>` 等比缩放**。实测：
-
-| 检查项 | 结果 |
+| 修订项 | 核对 |
 |---|---|
-| 含 `<script>` | **是** → kit `EXTERNAL_PATTERNS` 直接拒绝 |
-| 去掉脚本后 390px | `stageW: 1440` / `wrapW: 374` / `h1Right: 1448` / **`h1Clipped: true`** |
-| 溢出检测 | `overflow: hidden` 掩盖了裁切，`scrollWidth` 报 **0 溢出（假象）** |
+| §4.0 A：canvas 页不能进候选池 | ✓ 与我实测一致，且补了"不要靠剥脚本混进去"这点比我说的更准 |
+| §4.0 A：`overflow:hidden` 假通过 | ✓ 正确，我实测 `scrollWidth` 报 0 而实际 `h1Clipped:true` |
+| §4.0 B：lineage 前先跑 theme coverage | ✓ 方向对，但**块数写错了**（见 §2.1） |
+| §4.0 C：不能全局用 `/https?:\/\//` 判外链 | ✓ 比我建议的更彻底，改成属性级判定是对的 |
+| §4.4：rect + 裁剪祖先，不依赖 scrollWidth | ✓ 正确修法 |
+| Phase -1 排在最前 | ✓ 顺序对了 |
+| §4.2 加了 theme coverage 前提 | ✓ |
+| §9 改成"先修 Phase -1" | ✓ |
 
-**关键风险**：`overflow:hidden` 会让"三宽不溢出"这条验收条件**假通过**。方案 §4.4 把"390/1440 预览不溢出"当硬闸门，而 canvas 路径会用裁切骗过它——内容右半截被切掉，检测却显示无溢出。
+### 1.2 ⚠️ 仍未覆盖的（本次新发现）
 
-→ **候选池必须走 flow 页（响应式块直接输出），不能走 canvas 页。** 方案需要显式写明这一点，否则实现者会自然地去调 `export_html` 的 canvas 分支。
+---
 
-### 1.3 ⚠️ 主题映射对新苹果块已失效（真 bug，不只是对接问题）
+## 2. 四个新发现
 
-`themes.js` 的 `map` 只认旧 indigo/slate 色板。新苹果块用的是 `#1d1d1f` / `#6e6e73` / `#2997ff` / `#86868b`，**全都不在映射表里**：
+### 2.1 换肤失效是 17 块，不是 8 块
+
+方案 §4.0 B 写"51 块里 8 个全部换肤失效"。实测 **17 个** `changed=0`：
 
 ```
-pf-hero              apple:未变  warm:未变  neon:未变  dark:未变    ← 完全换不动
-pf-nav-glass         apple:未变  warm:未变  neon:变1处  dark:变1处
-pf-cta-banner        apple:未变  warm:变2处  neon:变3处  dark:变3处
-pf-section-split     apple:未变  warm:变2处  neon:变2处  dark:变2处
-pf-section-features  apple:未变  warm:变3处  neon:变3处  dark:变3处
-pf-media-cards       apple:变8处  warm:变8处  neon:变8处  dark:变8处   ← 只有它正常
+换肤完全失效（5 主题下 HTML 完全相同）: 17 块
+  pf-scroll-reveal, pf-carousel, pf-container, pf-spacer, pf-gallery,
+  pf-grid-2, pf-grid-3, pf-grid-4, pf-breadcrumb, pf-anchor-nav,
+  pf-image, pf-video, pf-hero, pf-hero-img, pf-card-glass,
+  pf-quote-big, pf-category-icons
+
+部分主题无区别: 3 块
+  pf-announce(3/5), pf-hero-overlay(3/5), pf-nav-glass(3/5)
+
+完全可换肤: 31 块
 ```
 
-按色板归类 51 个块：
+**最要命的是 hero 这一栏**——lineage 的主战场：
 
-| 类别 | 数量 | 影响 |
+```
+pf-hero              三主题唯一变体: 1/3  ✗ 不能用于 lineage
+pf-hero-img          三主题唯一变体: 1/3  ✗ 不能用于 lineage
+pf-hero-overlay      三主题唯一变体: 1/3  ✗ 不能用于 lineage
+pf-section-split     三主题唯一变体: 3/3  ✓
+pf-section-split-r   三主题唯一变体: 3/3  ✓
+```
+
+→ 方案 §4.2 的 lineage 策略（"同块组合 + 3 套主题 apple/flat/warm"）在**最常用的 3 个 hero 上直接不成立**。修完映射前，lineage 只能靠 `pf-section-split` 这类块，或改用结构差异。
+
+### 2.2 内容槽有唯一来源，方案的 contrast 组合 2/3 过不了
+
+实测各槽的可用来源：
+
+| 槽 | 全库唯一/少数来源 | 实测 |
 |---|---|---|
-| 用旧色板（可换肤） | 25 | 正常 |
-| **用新苹果色（换肤失效）** | 8 | `pf-hero` `pf-hero-img` `pf-nav-glass` `pf-card-glass` `pf-breadcrumb` `pf-anchor-nav` `pf-quote-big` `pf-category-icons` |
-| 新旧混用 | 6 | 部分换色，产生脏配色 |
-| 无 hex / 无映射 | 12 | — |
+| `foot` | **只有 `pf-footer`** | 含 `©` 的块：仅 `pf-footer` 1 个 |
+| `bullet`×3 + `meta`×3 | 只有 `pf-media-cards`、`pf-section-features` 2 个 | 同时能给 3+3 的块：仅这 2 个 |
+| `title` 纯文本叶子 | 多个，但 `pf-hero` 的 h1 含 `<br>` 不可读 | 见下 |
+| `cta` | 多个，但 `pf-cta-banner` 的被 `<span>` 包裹不可读 | 见下 |
 
-**后果**：方案 §4.2 的 lineage 策略是 "同一块组合 + 3 套主题（apple/flat/warm）"。但 `pf-hero` + `pf-hero-img` + `pf-nav-glass` 恰好是这套策略的主力块，而它们**换主题后完全不变** → 3 个"不同世界"其实是同一张页，`htmlSha` 相同会被 kit 当重复拒绝（§1.4 已实测到这个失败）。
-
-→ 这不是设计问题，是 `themes.js` 缺映射的 bug。**优先修**，而且修完 D1 那 12 块才算真正"可换肤"。
-
-### 1.4 ⚠️ 12 页唯一性是硬约束，且很脆
-
-同 `(块组合, 主题)` 对产出 **byte 级相同**的 HTML。实测踩到：
+按这个约束实测方案的三个 contrast 组合：
 
 ```
-=== import ===  ✗ 失败：候选 HTML 跨轮重复：r3p3
+low:  pf-hero + pf-section-features + pf-footer              ✓ 内容槽可读
+mid:  pf-hero-img + pf-media-cards + pf-cta-banner           ✗ 内容槽不可读（缺 foot）
+high: pf-nav-glass + pf-carousel + pf-section-features       ✗ 内容槽不可读（缺 foot）
+high: pf-nav-glass + pf-carousel + pf-section-features + pf-footer   ✓ 内容槽可读
 ```
 
-kit 要求整池 12 页互不相同。所以 **12 页必须是 12 个不同的 `(组合 × 主题)` 对**。6 组合 × 5 主题 = 30 种，够用，但没有余量做"同组合换主题"的 lineage 表达——而那正是方案 §4.2 想要的。
+**根因**：`foot` 槽只有 `pf-footer` 能给，方案 §4.2 的 mid/high 组合都没带 footer。
 
-→ lineage 轮要么靠**组合差异**（不是主题差异），要么先修 §1.3 让主题真的能换。
+三个具体不可读的原因（都是"非纯文本叶子"）：
 
-### 1.5 ⚠️ 内联 SVG 被误杀（素材面板全挂）
+```
+pf-hero 的 h1:          "让你的想法<br>大放异彩"      ← 含 <br>
+pf-cta-banner 的 h2/a:  <span data-pf-slot="title">   ← 被 span 包裹
+pf-footer 的版权行:     <div>© 2026 <span>…           ← div + 内嵌 span
+```
 
-`EXTERNAL_PATTERNS` 里有 `/https?:\/\//i`，而内联 SVG 的 `xmlns="http://www.w3.org/2000/svg"` 正好命中：
+→ **§4.2 的每个组合都必须显式包含 `pf-footer`**。建议在方案里写成硬规则：`compose_bundle` 的每个候选必须 `hasSlot(foot)`，否则直接拒绝。
 
-| 形态 | 闸门 |
+### 2.3 硬伤：360px 下三栏卡挤成竖排（"不溢出"测不出来）
+
+**kit 的真实渲染宽度是 360×480，不是方案里写的 390。** 源码核实：
+
+```
+templates/shortlist.html:  .cand { width: 360px; }  iframe { width: 360px; height: 480px; }
+templates/shortlist-final.html: 同上
+```
+
+按 360px 实测我生成的 12 页：**0/12 溢出**。看起来全过。但量到具体元素：
+
+```
+360px 下三栏特性卡:
+  grid 列宽: 90.66px / 90.67px / 90.66px
+  "三分钟成页" 卡片宽 43px → 折 3 行
+  "所见即所得" 卡片宽 43px → 折 3 行
+  "一键导出"  卡片宽 43px → 折 2 行
+```
+
+截图（`shots/feature-cards-360.png`）确认：三张卡挤在一行，每张 90px，标题竖着排。
+
+**这是方案 §4.4 验收条件的一个漏洞**：`getBoundingClientRect()` + 裁剪祖先只能抓"超出边界"，抓不到"挤到不可读"。三栏块在 360px 下不溢出，但已经不是三栏了。
+
+→ 建议 §4.4 补一条**可读性断言**，而不只是溢出断言：
+- 每个 `bullet`/`meta` 叶子的渲染宽度 ≥ 内容槽 min-width（比如 3 个中文字 × 字号）；
+- 或更简单：`bullet` 的 `rect.height / lineHeight ≤ 2`（最多折 2 行）。
+- `pf-section-features` / `pf-media-cards` 在 360px 下应该**降级成单列堆叠**，而不是硬挤三栏。这需要给这两个块加 `@media (max-width: 480px)` 的响应式规则——**当前 51 个块里一个 `@media` 都没有**。
+
+### 2.4 没有单块能承载 ≥5/6 内容槽 → 块组合是硬需求
+
+逐块测绘 51 个块对 6 个槽的覆盖能力，**最高只有 4/6**：
+
+```
+pf-section-features   4/6  (T S B3 M3 - -)
+pf-media-cards        4/6  (T S B3 M4 - -)
+0 个块达到 5/6 或 6/6
+```
+
+这印证了"块组合"是对的，但也说明：**不能指望某个 starter/块天然满足 design-kit 的内容契约**，必须由 `compose_bundle` 主动拼装 + 注入 `data-slot`。方案 §4.1 的映射表是"字段级"的，缺了"块级"这一层（哪个块负责哪个槽、缺槽怎么补）。
+
+顺便：`contrast` 用的三档组合需要**装饰密度**真的分得开。实测可用的装饰梯度：
+
+| 块 | 装饰强度 |
 |---|---|
-| 内联 `<svg xmlns="http://...">` | ✗ **拒绝** |
-| base64 dataURL（`data:image/svg+xml;base64,...`） | ✓ 通过 |
-| `data:image/svg+xml,` 明文 | ✓ 通过 |
+| `pf-hero` | 无装饰（纯文字居中） |
+| `pf-hero-img` | 一张大图 |
+| `pf-hero-overlay` | 大图 + 渐变遮罩 |
+| `pf-section-features` | 3 个浅底卡片 |
+| `pf-media-cards` | 3 张带阴影卡片 |
+| `pf-carousel` | 3 图淡入动画 |
+| `pf-nav-glass` | 毛玻璃条 |
 
-→ 素材面板 39 个图标全是内联 SVG，**直接进不了候选池**。修法：导出候选页时剥掉 `xmlns`，或统一转 base64。方案 §4.3 提到了这点，但低估了影响面（它说的是"可去掉命名空间"，实际是"必须"，否则素材面板整个不可用）。
-
-### 1.6 ⚠️ 内容槽是硬约束，逐块映射工作量被低估
-
-kit 的 `readContentSlots` 要求：`<title>` 必须等于主标题、恰好 3 条 `bullet` + 3 条 `meta`、**只认纯文本叶子**。实测踩坑：
-
-| 坑 | 现象 | 修法 |
-|---|---|---|
-| `pf-footer` 版权行是嵌套结构（含 `<span>`） | `foot: null` → 内容槽不可读 | 替换成纯文本 `<p data-slot="foot">` |
-| `pf-footer` 的简介也命中 meta 正则 | `metas: 4 条` → 判定失败 | 只给三栏特性/媒体卡打 meta |
-| `pf-section-split` 没有三栏 | `bullet/meta 应 3 组，实际 0` | 组合里必须补一个三栏块 |
-| `pf-media-cards` 是 `<h3>` 在 `<p>` 之后 | 顺序与 features 相反 | 两套正则，或统一改块结构 |
-| `pf-carousel` / `pf-hero-overlay` 无文本槽 | 不可读 | 不能单独成页，只能做配件 |
-
-→ 方案 §4.1 的映射表只写了"哪个槽对应哪个字段"，没写"哪些块根本进不了池"。**建议加一列 `inPool: yes/no`**：51 块里真正能承载内容槽的大约 12–15 个，其余是配件。
+够分 low/mid/high，但**`pf-carousel` 是换肤失效 + 带 `<style>` 动画**的，进池要单独审。
 
 ---
 
-## 2. 方案需要改的地方
+## 3. 方案需要补的 4 条
 
-### 2.1 加一条硬规则（最高优先）
+### 3.1 §4.4 加可读性断言（最高优先）
 
-> **候选页必须由 flow 模式（响应式块直出）生成，禁止用 canvas 页导出。**
-> 判据：候选 HTML 不含 `.pf-canvas-stage`、不含 `<script>`、带 `<meta name="viewport">`。
-> 溢出检测必须在 `overflow: visible` 下做，禁止被 `overflow:hidden` 掩盖。
-
-这条不写清楚，实现者一定会走 canvas 分支，然后得到一个"闸门全过、内容被裁一半"的池子。
-
-### 2.2 前置修复项（不进 MCP 也要修）
-
-| # | 项 | 理由 |
-|---|---|---|
-| P1 | `themes.js` 补新苹果色板映射 | 8 个块换肤失效；直接打掉 lineage 策略 |
-| P2 | 候选导出剥 `xmlns` / 转 base64 | 素材面板否则完全不可用 |
-| P3 | `buildBlockHTML` 抽离 DOMParser | 方案 §6 Phase 0 已提；实测 Node 下确实跑不了，只能用正则绕 |
-
-P1 和 P2 是**做这个方案的前提**，不是方案的一部分。建议先做，再谈 MCP。
-
-### 2.3 修订 §9 最小可交付
-
-原方案：`blocks.list` → `pages.create` → `pages.apply_ops` → `pages.validate` → `shortlist.compose_bundle`
-
-实测后建议改成：
-
-```
-① 修 P1/P2/P3
-② src/service/{catalog,compose,slots,validate}.mjs   ← 纯函数，Node 可跑
-③ compose_shortlist_bundle（CLI 先跑通，不急着 MCP）
-④ 验收：12 页过 import + verify + 三宽真溢出检测
-⑤ 再做 MCP server 包一层
+```diff
+- 390/768/1440 三宽预览不溢出（至少 390 和 1440）
++ 360/768/1440 三宽预览（360 = kit iframe 真实宽度）：
++   a) 无元素超出裁剪边界（rect + 裁剪祖先）
++   b) 内容槽叶子可读：bullet/meta 的 rect.height / lineHeight ≤ 2（最多折 2 行）
++   c) 三栏块在 360 下必须降级为单列（需先给块加 @media）
 ```
 
-**`compose_bundle` 应该是一个纯函数 + CLI，MCP 只是它的一个 transport。** 方案已经这么想（§2.1 边界原则），但 §9 把它排在 MCP 工具之后，顺序反了。先有纯函数，MCP 是几行包壳；先做 MCP，纯函数会被协议形状绑死。
+### 3.2 §4.2 每个组合强制带 footer
+
+```diff
+- low：pf-hero + pf-section-features + pf-footer
+- mid：pf-hero-img + pf-media-cards + pf-cta-banner
+- high：pf-nav-glass + pf-carousel + pf-section-features
++ 每个候选 = 导航(可选) + hero + bullet块 + (配件) + footer(必需)
++ 硬规则：hasSlot('foot') 为 false 直接拒绝，foot 只有 pf-footer 能给
+```
+
+### 3.3 §4.0 B 数字修正 + Phase -1 加一条
+
+- "8 个换肤失效" → **17 个 changed=0，3 个部分失效**（清单见 §2.1 本文）。
+- Phase -1 加第 4 项：**给 `pf-section-features` / `pf-media-cards` / `pf-pricing` 加 `@media (max-width: 480px)` 单列降级**。当前 51 块零媒体查询，这是 360px 可读性的前置条件。
+
+### 3.4 §4.1 补"块级"映射表
+
+字段级映射（title↔pf-hero.title）不够用，需补：
+
+| 槽 | 唯一/少数来源 | 缺失时的处理 |
+|---|---|---|
+| `foot` | `pf-footer`（唯一） | **必需块**，缺则拒绝 |
+| `bullet`×3 + `meta`×3 | `pf-section-features` / `pf-media-cards` | 二选一，必需 |
+| `title` | 多个（但 `pf-hero` 的含 `<br>` 不可读） | 注入时替换为纯文本叶子 |
+| `cta` | 多个（`pf-cta-banner` 的被 span 包裹） | 注入时替换为纯文本叶子 |
 
 ---
 
-## 3. §10 五个决策的推荐
+## 4. 仍然正确的判断（保留）
 
-| # | 问题 | 推荐 | 理由 |
-|---|---|---|---|
-| 1 | transport | **先 stdio** | 本地进程、无鉴权面、Host 直接起子进程。HTTP/SSE 等真有远程 Host 再说。 |
-| 2 | 渲染 | **Phase 1 只返回 HTML + 三宽溢出报告** | 溢出是硬闸门且比 PNG 便宜 100 倍；PNG 延后到确认有需要。**注意 §1.2：溢出检测必须在 visible 下做。** |
-| 3 | AI 面板 | **交给 Host**，BYOK 降级为"无 Host 时的本地模式" | 方案 §5.2 结论正确，照做。编辑器内 AI 与 Host 共用 `tool-client.mjs`。 |
-| 4 | design-kit 对接 | **`compose_bundle` 高层工具** | 逐页 `apply_ops` 会让 Host 承担闸门知识（内容槽一致性、12 页唯一性、关系合法性），这些是确定性逻辑，不该让模型每次重新推理。 |
-| 5 | `pf-video` / 外链块 | **禁止** | 含 YouTube iframe，实测定为 `safe:false`。 |
-
----
-
-## 4. 方案里判断正确、值得保留的部分
-
-- §0 "不要把 PageForge 做成 MCP 聊天服务" —— 完全正确，这是全篇最重要的一句。
-- §1.2 的 7 条病因 —— 与实测一致。尤其"没有验证闭环"和"只有 12/51 块有 AI 元数据"。
-- §2.1 边界原则 —— 工具确定性、AI 在 Host、生成必须过 validate。
-- §5.4 视觉反馈是质量最大杠杆 —— 对，但要按 §2 里修订后的顺序做。
-- §7 风险表里的 "桌面 1440 vs 候选 390" —— 已经识别到，只是没意识到 canvas 路径会**假通过**。
+- §0 "不要把 PageForge 做成 MCP 聊天服务" —— 全篇最重要的一句。
+- §4.0 A 的"canvas 一律 `candidateEligible=false`" —— 比我上轮建议更果断，对的。
+- §4.0 C 的"按属性判外链 + allowlist xmlns" —— 比我建议的"剥 xmlns"更正确。
+- Phase -1 → Phase 0 → Phase 1 的顺序。
+- §10 五个决策我的推荐不变：stdio / 只返 HTML+溢出报告 / 交给 Host / `compose_bundle` 高层 / 禁止 `pf-video`。
 
 ---
 
 ## 5. 结论
 
-**可以做，方向对，但先把 P1/P2/P3 三个前置修完，再按修订后的 §9 顺序做。**
+**修订版可以照做，前提是补上 §3 那 4 条。**
 
-最大的判断是这一条：**PageForge 在粗选环节提供的价值是"响应式块库 + 主题系统 + 内容槽映射"，不是 canvas 画布。** 方案需要明确区分这两条产出路径——canvas 是终选后的精修场地，flow 页才是粗选候选的来源。这一点写清楚，整个方案就顺了。
+优先级排序（我的建议）：
+
+| 顺序 | 事项 | 理由 |
+|---|---|---|
+| 1 | 给三栏块加 `@media` 单列降级 | 否则 360px 候选全是竖排卡片，用户看到就会删光 |
+| 2 | 修主题映射（P1，17 块） | lineage 策略的前提 |
+| 3 | `compose_bundle` 加 footer 硬规则 | 否则 2/3 组合过不了内容槽 |
+| 4 | §4.4 加可读性断言 | 否则"闸门全过但视觉不可用" |
+| 5 | 属性级外链检查 + xmlns allowlist | 素材面板可用性 |
+| 6 | 然后才是 Phase 0 / MCP | — |
+
+**最核心的一句判断不变**：PageForge 在粗选环节的价值是"响应式块库 + 主题系统 + 内容槽映射"，不是 canvas 画布。而现在这块库**还没有真正响应式**（零 `@media`）、**主题也换不动**（17 块失效）。这两件事修完，"响应式块库"这个价值主张才成立。
 
 ---
 
-## 附：本次验证的可复跑脚本
+## 附：本次验证脚本
 
-全部在 `%TEMP%\pfspike\`：
+`%TEMP%\pfspike\`：
 
-| 脚本 | 作用 |
-|---|---|
-| `spike3.mjs` | 真实块 → 12 页 → `init/plan/import/verify` 全链路 |
-| `spike4.mjs` | 390/768/1440 三宽溢出实测（含 viewport meta A/B） |
-| `themetest2.mjs` | 51 块按色板归类，找换肤失效块 |
-| `svgtest.cjs` | 内联 SVG / base64 / 明文 dataURL 过闸门对比 |
-| `canvastest2.cjs` | canvas 导出形态过闸门（验证 `<script>` 拒绝） |
-| `clip.cjs` | 证明 canvas 页 390px 是裁切而非适配 |
+| 脚本 | 作用 | 本轮新增 |
+|---|---|---|
+| `spike3.mjs` | 真实块 → 12 页 → 全链路闸门 | |
+| `spike4-360.mjs` | 360/768/1440 三宽溢出 | ✓ 改用 kit 真实 360 |
+| `slotcaps.mjs` | 51 块 × 6 槽能力测绘 | ✓ |
+| `coverage.mjs` | 51 块 × 5 主题换肤覆盖 | ✓ |
+| `combocheck.mjs` | 方案 §4.2 三组合逐一验证 | ✓ |
+| `lines.cjs` | 360px 下文字折行行数 | ✓ |
+| `diversity.mjs` | 结构组合空间 + hero lineage 可用性 | ✓ |
 
-截图：`%TEMP%\pfspike\shots\`（8 页 × 2 宽）
+截图：`shots/feature-cards-360.png`（360px 三栏挤成竖排的铁证）
