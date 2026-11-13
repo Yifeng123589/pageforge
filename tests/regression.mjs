@@ -90,6 +90,23 @@ check('产物无 API Key', !/sk-[a-zA-Z0-9]{20,}/.test(built));
   check('hero 组可用于 lineage（三主题互异）', weak.length === 0, weak.length ? `不足: ${weak.join(', ')}` : `${heroIds.length} 个 hero 均 3/3`);
 }
 
+// v2 canvas 块模板同样不能有刚性列：canvas 是 1440 定宽，auto-fit 在 1200px 可用宽度
+// 下仍按原列数排（实测 3/3/3/2），窄视口自动降单列——两边都正确。
+{
+  const { BLOCK_TEMPLATES } = await import(pathToFileURL(join(ROOT, 'src', 'v2', 'block-templates.js')).href);
+  const rigid = [];
+  for (const [name, make] of Object.entries(BLOCK_TEMPLATES)) {
+    const html = make().html;
+    for (const m of html.matchAll(/grid-template-columns:\s*([^;"]+)/g)) {
+      const v = m[1].trim();
+      if (/^repeat\(auto-fit/.test(v)) continue;
+      rigid.push(`${name}:${v}`);
+    }
+  }
+  check('canvas 块模板无刚性多列', rigid.length === 0,
+    rigid.length ? rigid.slice(0, 5).join(' | ') : `${Object.keys(BLOCK_TEMPLATES).length} 个模板全部 auto-fit`);
+}
+
 // ---------- 1. 起 headless 浏览器 ----------
 // 浏览器探测：Windows 走安装路径，Linux/macOS 走常见二进制名（CI 与本地同一份脚本）
 const candidates = [

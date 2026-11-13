@@ -39,7 +39,7 @@ export const BLOCK_TEMPLATES = {
 
   features3: () => withSlots(T('features3', 120, 300, 1200, 380, 2,
     { padding: '56px 48px', background: '#ffffff', borderRadius: '16px' },
-    `<h2 data-id="h_title" style="text-align:center;font-size:36px;font-weight:800;letter-spacing:-0.5px;margin:0 0 10px;color:#111827;">功能特性</h2> <p data-id="p_sub" style="text-align:center;font-size:17px;color:#6b7280;margin:0 0 40px;">三栏介绍你的核心功能。</p> <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;"> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c1" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">极速</h3> <p data-id="p_c1" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">秒开页面，极致性能。</p> </div> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c2" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">安全</h3> <p data-id="p_c2" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">端到端加密。</p> </div> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c3" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">省心</h3> <p data-id="p_c3" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">全自动备份。</p> </div> </div>`),
+    `<h2 data-id="h_title" style="text-align:center;font-size:36px;font-weight:800;letter-spacing:-0.5px;margin:0 0 10px;color:#111827;">功能特性</h2> <p data-id="p_sub" style="text-align:center;font-size:17px;color:#6b7280;margin:0 0 40px;">三栏介绍你的核心功能。</p> <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;"> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c1" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">极速</h3> <p data-id="p_c1" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">秒开页面，极致性能。</p> </div> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c2" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">安全</h3> <p data-id="p_c2" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">端到端加密。</p> </div> <div style="padding:24px;border-radius:14px;background:#f5f5f7;"> <h3 data-id="h_c3" style="margin:0 0 8px;font-size:18px;font-weight:700;color:#111827;">省心</h3> <p data-id="p_c3" style="margin:0;font-size:14.5px;line-height:1.65;color:#6b7280;">全自动备份。</p> </div> </div>`),
   (elm, s) => {
     setLeaf(elm, 'h_title', s.title, 20);
     setLeaf(elm, 'p_sub', s.sub);
@@ -52,7 +52,7 @@ export const BLOCK_TEMPLATES = {
 
   footer: () => withSlots(T('footer', 120, 700, 1200, 190, 3,
     { padding: '40px 48px', background: '#0d0d0f', borderRadius: '16px' },
-    `<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;align-items:start;"> <div> <p data-id="p_brand" style="color:#ffffff;font-size:20px;font-weight:800;margin:0 0 10px;">你的品牌</p> <p data-id="p_intro" style="color:#a1a1aa;font-size:14px;line-height:1.7;margin:0;">一句话介绍你的产品，让访客知道你是做什么的。</p> </div> <div> <p data-id="p_l1" style="color:#e4e4e7;font-size:14px;font-weight:700;margin:0 0 8px;">产品</p> <p data-id="p_l2" style="color:#a1a1aa;font-size:14px;margin:0 0 6px;">功能</p> <p data-id="p_l3" style="color:#a1a1aa;font-size:14px;margin:0;">价格</p> </div> <div> <p data-id="p_l4" style="color:#e4e4e7;font-size:14px;font-weight:700;margin:0 0 8px;">公司</p> <p data-id="p_l5" style="color:#a1a1aa;font-size:14px;margin:0 0 6px;">关于我们</p> <p data-id="p_l6" style="color:#a1a1aa;font-size:14px;margin:0;">联系</p> </div> </div> <p data-id="p_copy" style="color:#71717a;font-size:13px;margin:24px 0 0;padding-top:20px;border-top:1px solid #27272a;text-align:center;">© 2026 你的品牌. All rights reserved.</p>`),
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:40px;align-items:start;"> <div> <p data-id="p_brand" style="color:#ffffff;font-size:20px;font-weight:800;margin:0 0 10px;">你的品牌</p> <p data-id="p_intro" style="color:#a1a1aa;font-size:14px;line-height:1.7;margin:0;">一句话介绍你的产品，让访客知道你是做什么的。</p> </div> <div> <p data-id="p_l1" style="color:#e4e4e7;font-size:14px;font-weight:700;margin:0 0 8px;">产品</p> <p data-id="p_l2" style="color:#a1a1aa;font-size:14px;margin:0 0 6px;">功能</p> <p data-id="p_l3" style="color:#a1a1aa;font-size:14px;margin:0;">价格</p> </div> <div> <p data-id="p_l4" style="color:#e4e4e7;font-size:14px;font-weight:700;margin:0 0 8px;">公司</p> <p data-id="p_l5" style="color:#a1a1aa;font-size:14px;margin:0 0 6px;">关于我们</p> <p data-id="p_l6" style="color:#a1a1aa;font-size:14px;margin:0;">联系</p> </div> </div> <p data-id="p_copy" style="color:#71717a;font-size:13px;margin:24px 0 0;padding-top:20px;border-top:1px solid #27272a;text-align:center;">© 2026 你的品牌. All rights reserved.</p>`),
   (elm, s) => {
     if (s.brand) {
       setLeaf(elm, 'p_brand', s.brand, 20);
@@ -85,7 +85,7 @@ export const BLOCK_TEMPLATES = {
     { padding: '48px 40px', background: '#ffffff', borderRadius: '16px' },
     `<h2 data-id="h_title" style="font-size:32px;font-weight:700;text-align:center;margin:0 0 8px;color:#1e293b;">精选作品</h2>
 <p data-id="p_sub" style="text-align:center;color:#64748b;margin:0 0 36px;line-height:1.7;">一句话介绍这个系列</p>
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;">
   <div style="border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 4px 20px rgba(15,23,42,0.08);">
     <img data-id="img_1" src="${ph(400, 260, '封面 1')}" alt="" style="width:100%;height:160px;object-fit:cover;display:block;">
     <div style="padding:16px;">
@@ -211,7 +211,7 @@ export const BLOCK_TEMPLATES = {
   // —— D1 第二批：双栏产品区（图左 / 文左一对）——
   sectionSplit: () => withSlots(T('sectionSplit', 120, 160, 1200, 380, 2,
     { padding: '48px 40px', background: '#ffffff', borderRadius: '16px' },
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;height:100%;">
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:40px;align-items:center;height:100%;">
   <img data-id="img_main" src="${ph(560, 320, '产品图')}" alt="" style="width:100%;height:280px;object-fit:cover;border-radius:20px;display:block;background:#e8e8ed;">
   <div>
     <h2 data-id="h_title" style="font-size:32px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
@@ -223,7 +223,7 @@ export const BLOCK_TEMPLATES = {
 
   sectionSplitR: () => withSlots(T('sectionSplitR', 120, 160, 1200, 380, 2,
     { padding: '48px 40px', background: '#ffffff', borderRadius: '16px' },
-    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;height:100%;">
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:40px;align-items:center;height:100%;">
   <div>
     <h2 data-id="h_title" style="font-size:32px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
     <p data-id="p_sub" style="font-size:17px;line-height:1.7;color:#6e6e73;margin:0 0 24px;">左侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</p>
