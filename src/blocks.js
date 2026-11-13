@@ -50,9 +50,9 @@ export const blocks = [
       },
     },
     content: `<div data-pf-carousel data-an="fade" style="position:relative;height:560px;overflow:hidden;">
-  <img src="${placeholderImg(1200, 700, '视觉 1')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉1">
-  <img src="${placeholderImg(1200, 700, '视觉 2')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉2">
-  <img src="${placeholderImg(1200, 700, '视觉 3')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉3">
+  <img data-pf-slot-img="0" src="${placeholderImg(1200, 700, '视觉 1')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉1">
+  <img data-pf-slot-img="1" src="${placeholderImg(1200, 700, '视觉 2')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉2">
+  <img data-pf-slot-img="2" src="${placeholderImg(1200, 700, '视觉 3')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="视觉3">
   <style>
     [data-pf-carousel][data-an="fade"]>img{animation:pfCFade 10.8s infinite}
     [data-pf-carousel][data-an="fade"]>img:nth-of-type(2){animation-delay:3.6s}
@@ -154,9 +154,9 @@ export const blocks = [
       },
     },
     content: `<section style="max-width:1100px;margin:0 auto;padding:64px 24px;">
-  <h2 style="font-size:32px;font-weight:700;text-align:center;margin:0 0 8px;color:#1e293b;">精选作品</h2>
-  <p style="text-align:center;color:#64748b;margin:0 0 40px;line-height:1.7;">一句话介绍这个系列</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px;">
+  <h2 style="font-size:32px;font-weight:700;text-align:center;margin:0 0 8px;color:#1e293b;"><span data-pf-slot="title">精选作品</span></h2>
+  <p style="text-align:center;color:#64748b;margin:0 0 40px;line-height:1.7;"><span data-pf-slot="sub">一句话介绍这个系列</span></p>
+  <div data-pf-items style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px;">
     <a href="#" data-pf-hover style="display:block;text-decoration:none;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 4px 20px rgba(15,23,42,0.08);transition:transform 0.2s;">
       <img src="${placeholderImg(400, 300, '封面 1')}" style="width:100%;display:block;transition:transform .45s cubic-bezier(.16,1,.3,1);" alt="作品1">
       <div style="padding:16px;">
@@ -260,7 +260,7 @@ export const blocks = [
       },
     },
     content: `<div style="background:#0078d4;color:#ffffff;text-align:center;padding:10px 16px;font-size:14px;line-height:1.6;">
-  开学季促销：热门商品限时优惠&nbsp;<a href="#" style="color:#ffffff;text-decoration:underline;font-weight:600;">立即选购 →</a>
+  <span data-pf-slot="text">开学季促销：热门商品限时优惠</span>&nbsp;<a href="#" style="color:#ffffff;text-decoration:underline;font-weight:600;"><span data-pf-slot="btn">立即选购 →</span></a>
 </div>`,
   },
   {
@@ -361,13 +361,13 @@ export const blocks = [
       },
     },
     content: `<nav style="display:flex;justify-content:space-between;align-items:center;padding:14px 24px;background:#f8fafc;border-radius:12px;">
-  <div style="font-weight:700;font-size:18px;color:#1e293b;">Logo</div>
+  <div style="font-weight:700;font-size:18px;color:#1e293b;"><span data-pf-slot="brand">Logo</span></div>
   <div style="display:flex;gap:24px;font-size:15px;">
-    <a href="#" style="text-decoration:none;color:#1e293b;">首页</a>
-    <a href="#" style="text-decoration:none;color:#64748b;">功能</a>
-    <a href="#" style="text-decoration:none;color:#64748b;">关于</a>
+    <a href="#" style="text-decoration:none;color:#1e293b;"><span data-pf-slot="links">首页</span></a>
+    <a href="#" style="text-decoration:none;color:#64748b;"><span data-pf-slot="links">功能</span></a>
+    <a href="#" style="text-decoration:none;color:#64748b;"><span data-pf-slot="links">关于</span></a>
   </div>
-  <a href="#" style="background:#4f46e5;color:#ffffff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">开始</a>
+  <a href="#" style="background:#4f46e5;color:#ffffff;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;"><span data-pf-slot="btn">开始</span></a>
 </nav>`,
   },
   {
@@ -587,11 +587,11 @@ export const blocks = [
       },
     },
     content: `<section style="text-align:center;padding:110px 24px 100px;max-width:1000px;margin:0 auto;">
-  <h1 style="font-size:56px;font-weight:700;letter-spacing:-0.8px;line-height:1.1;margin:0 0 18px;color:#1d1d1f;">让你的想法<br>大放异彩</h1>
-  <p style="font-size:22px;line-height:1.6;color:#6e6e73;margin:0 auto 32px;max-width:620px;">用一句话描述你的产品，像苹果官网一样克制而有力。</p>
+  <h1 style="font-size:56px;font-weight:700;letter-spacing:-0.8px;line-height:1.1;margin:0 0 18px;color:#1d1d1f;"><span data-pf-slot="title">让你的想法<br>大放异彩</span></h1>
+  <p style="font-size:22px;line-height:1.6;color:#6e6e73;margin:0 auto 32px;max-width:620px;"><span data-pf-slot="sub">用一句话描述你的产品，像苹果官网一样克制而有力。</span></p>
   <div style="display:flex;gap:32px;justify-content:center;">
-    <a href="#" style="color:#2997ff;font-size:19px;text-decoration:none;">了解更多 ›</a>
-    <a href="#" style="color:#2997ff;font-size:19px;text-decoration:none;">立即购买 ›</a>
+    <a href="#" style="color:#2997ff;font-size:19px;text-decoration:none;"><span data-pf-slot="btn">了解更多 ›</span></a>
+    <a href="#" style="color:#2997ff;font-size:19px;text-decoration:none;"><span data-pf-slot="secondary">立即购买 ›</span></a>
   </div>
 </section>`,
   },
@@ -614,9 +614,9 @@ export const blocks = [
     content: `<section style="padding:0;">
   <img src="${placeholderImg()}" alt="主视觉" style="width:100%;display:block;">
   <div style="text-align:center;padding:64px 24px 80px;">
-    <h2 style="font-size:40px;font-weight:700;letter-spacing:-0.5px;margin:0 0 12px;color:#1d1d1f;">产品名称</h2>
-    <p style="font-size:19px;color:#6e6e73;margin:0 0 24px;">一句话介绍，简洁有力。</p>
-    <a href="#" style="color:#2997ff;font-size:17px;text-decoration:none;">了解更多 ›</a>
+    <h2 style="font-size:40px;font-weight:700;letter-spacing:-0.5px;margin:0 0 12px;color:#1d1d1f;"><span data-pf-slot="title">产品名称</span></h2>
+    <p style="font-size:19px;color:#6e6e73;margin:0 0 24px;"><span data-pf-slot="sub">一句话介绍，简洁有力。</span></p>
+    <a href="#" style="color:#2997ff;font-size:17px;text-decoration:none;"><span data-pf-slot="btn">了解更多 ›</span></a>
   </div>
 </section>`,
   },
@@ -650,13 +650,13 @@ export const blocks = [
       },
     },
     content: `<nav style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 24px;background:rgba(255,255,255,0.72);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,0.08);position:sticky;top:0;z-index:50;">
-  <div style="font-weight:700;font-size:17px;color:#1d1d1f;">Logo</div>
+  <div style="font-weight:700;font-size:17px;color:#1d1d1f;"><span data-pf-slot="brand">Logo</span></div>
   <div style="display:flex;gap:28px;font-size:14px;font-weight:500;">
-    <a href="#" style="text-decoration:none;color:#1d1d1f;">首页</a>
-    <a href="#" style="text-decoration:none;color:#6e6e73;">产品</a>
-    <a href="#" style="text-decoration:none;color:#6e6e73;">支持</a>
+    <a href="#" style="text-decoration:none;color:#1d1d1f;"><span data-pf-slot="links">首页</span></a>
+    <a href="#" style="text-decoration:none;color:#6e6e73;"><span data-pf-slot="links">产品</span></a>
+    <a href="#" style="text-decoration:none;color:#6e6e73;"><span data-pf-slot="links">支持</span></a>
   </div>
-  <a href="#" style="background:#0d0d0f;color:#fffdfe;padding:7px 18px;border-radius:980px;font-size:13px;font-weight:600;text-decoration:none;">购买</a>
+  <a href="#" style="background:#0d0d0f;color:#fffdfe;padding:7px 18px;border-radius:980px;font-size:13px;font-weight:600;text-decoration:none;"><span data-pf-slot="btn">购买</span></a>
 </nav>`,
   },
   {
@@ -689,9 +689,9 @@ export const blocks = [
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:56px;align-items:center;">
     <div style="border-radius:20px;background:linear-gradient(135deg,#e8e8ed,#f5f5f7);min-height:320px;display:flex;align-items:center;justify-content:center;color:#86868b;font-size:16px;font-weight:600;">产品图 / 截图</div>
     <div>
-      <h2 style="font-size:36px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
-      <p style="font-size:18px;line-height:1.7;color:#6e6e73;margin:0 0 24px;">右侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</p>
-      <a href="#" style="color:#2997ff;font-size:17px;text-decoration:none;">了解更多 ›</a>
+      <h2 style="font-size:36px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;"><span data-pf-slot="title">产品亮点</span></h2>
+      <p style="font-size:18px;line-height:1.7;color:#6e6e73;margin:0 0 24px;"><span data-pf-slot="sub">右侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</span></p>
+      <a href="#" style="color:#2997ff;font-size:17px;text-decoration:none;"><span data-pf-slot="btn">了解更多 ›</span></a>
     </div>
   </div>
 </section>`,
@@ -715,9 +715,9 @@ export const blocks = [
     content: `<section style="max-width:1100px;margin:0 auto;padding:80px 24px;">
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:56px;align-items:center;">
     <div>
-      <h2 style="font-size:36px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
-      <p style="font-size:18px;line-height:1.7;color:#6e6e73;margin:0 0 24px;">左侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</p>
-      <a href="#" style="color:#2997ff;font-size:17px;text-decoration:none;">了解更多 ›</a>
+      <h2 style="font-size:36px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;"><span data-pf-slot="title">产品亮点</span></h2>
+      <p style="font-size:18px;line-height:1.7;color:#6e6e73;margin:0 0 24px;"><span data-pf-slot="sub">左侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</span></p>
+      <a href="#" style="color:#2997ff;font-size:17px;text-decoration:none;"><span data-pf-slot="btn">了解更多 ›</span></a>
     </div>
     <div style="border-radius:20px;background:linear-gradient(135deg,#e8e8ed,#f5f5f7);min-height:320px;display:flex;align-items:center;justify-content:center;color:#86868b;font-size:16px;font-weight:600;">产品图 / 截图</div>
   </div>

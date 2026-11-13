@@ -107,6 +107,34 @@ check('产物无 API Key', !/sk-[a-zA-Z0-9]{20,}/.test(built));
     rigid.length ? rigid.slice(0, 5).join(' | ') : `${Object.keys(BLOCK_TEMPLATES).length} 个模板全部 auto-fit`);
 }
 
+// AI 填槽：12 个 AI 块必须都能在 Node 下（无 DOMParser）真正填入槽位并剥离标记。
+// 改前只有 3 块带 data-pf-slot，其余 9 块 ai.slots 元数据存在但标记缺失 → 填槽静默失效。
+{
+  const { blocks } = await import(pathToFileURL(join(ROOT, 'src', 'blocks.js')).href);
+  const { buildBlockHTML } = await import(pathToFileURL(join(ROOT, 'src', 'block-html.js')).href);
+  const sample = {
+    title: '标题甲', sub: '副文案乙', btn: '按钮丙', secondary: '次按钮丁',
+    brand: '品牌戊', intro: '介绍己', text: '公告庚',
+    links: '链一,链二,链三', items: ['甲：一', '乙：二', '丙：三'], imgs: ['i1.png', 'i2.png', 'i3.png'],
+  };
+  const aiBlocks = blocks.filter((b) => b.ai);
+  const broken = [];
+  for (const b of aiBlocks) {
+    const out = buildBlockHTML(b, sample);
+    // 只校验该块自己声明的槽（别把不相关槽算作缺失）
+    const declared = Object.keys(b.ai.slots || {});
+    const atoms = declared.flatMap((k) => {
+      const v = sample[k];
+      return Array.isArray(v) ? v : (v ? [v] : []);
+    }).map(String).flatMap((v) => v.split(/[：:,，|]/)).map((x) => x.trim()).filter(Boolean);
+    const miss = atoms.filter((a) => !out.includes(a));
+    const residual = /data-pf-(slot|items|slot-img)/.test(out);
+    if (miss.length || residual) broken.push(`${b.id}${miss.length ? ':' + miss.slice(0, 2).join('/') : ':标记残留'}`);
+  }
+  check('12 个 AI 块均可填槽（Node 无 DOM）', broken.length === 0,
+    broken.length ? broken.join(' | ') : `${aiBlocks.length} 块全部命中且标记已剥离`);
+}
+
 // ---------- 1. 起 headless 浏览器 ----------
 // 浏览器探测：Windows 走安装路径，Linux/macOS 走常见二进制名（CI 与本地同一份脚本）
 const candidates = [
