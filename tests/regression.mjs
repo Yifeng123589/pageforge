@@ -135,6 +135,42 @@ check('产物无 API Key', !/sk-[a-zA-Z0-9]{20,}/.test(built));
     broken.length ? broken.join(' | ') : `${aiBlocks.length} 块全部命中且标记已剥离`);
 }
 
+// 内容卫生（方案 §4.0 C）：外链判定必须按属性，不能全局 /https?:\/\//。
+// 否则内联 SVG 的 xmlns="http://www.w3.org/2000/svg" 会被当外链，
+// 素材面板 39 个图标全部无法进入候选池。
+{
+  const { validateCandidateHtml } = await import(pathToFileURL(join(ROOT, 'src', 'validate.js')).href);
+  const { assetIcons } = await import(pathToFileURL(join(ROOT, 'src', 'assets.js')).href);
+  const { blocks } = await import(pathToFileURL(join(ROOT, 'src', 'blocks.js')).href);
+  const pad = (s) => `<html><body>${s}</body></html>`.padEnd(230, ' ');
+
+  const killedIcons = assetIcons.filter((it) => !validateCandidateHtml(pad(it.svg || '')).ok);
+  check('内联 SVG 的 xmlns 不被误判为外链', killedIcons.length === 0,
+    killedIcons.length ? `误杀 ${killedIcons.length} 个: ${killedIcons.slice(0, 3).map((i) => i.name).join(',')}` : `${assetIcons.length} 个素材图标全通过`);
+
+  const mustReject = {
+    外链href: '<a href="https://evil.com/x">x</a>',
+    外链img: '<img src="https://evil.com/a.png">',
+    协议相对: '<img src="//cdn.evil.com/a.png">',
+    iframe: '<iframe src="a"></iframe>',
+    script: '<script>x</script>',
+    内联事件: '<div onclick="x()">x</div>',
+    javascript协议: '<a href="javascript:x()">x</a>',
+    css外链: '<style>a{background:url(https://e/x.png)}</style>',
+  };
+  const passed = Object.entries(mustReject).filter(([, html]) => validateCandidateHtml(pad(html)).ok);
+  check('真外链/脚本一律拒绝', passed.length === 0,
+    passed.length ? `漏放: ${passed.map(([k]) => k).join(',')}` : `${Object.keys(mustReject).length} 种攻击面全部拦下`);
+
+  const mustPass = { 内联SVG: '<svg xmlns="http://www.w3.org/2000/svg"><circle r="1"/></svg>', base64图: '<img src="data:image/png;base64,iVBOR">', 锚点: '<a href="#sec">x</a>' };
+  const failed = Object.entries(mustPass).filter(([, html]) => !validateCandidateHtml(pad(html)).ok);
+  check('合法内联资源放行', failed.length === 0,
+    failed.length ? `误拒: ${failed.map(([k]) => k).join(',')}` : `${Object.keys(mustPass).length} 类合法资源放行`);
+
+  const video = blocks.find((b) => b.id === 'pf-video');
+  check('pf-video 被判为不可入池', !validateCandidateHtml(pad(video.content)).ok);
+}
+
 // ---------- 1. 起 headless 浏览器 ----------
 // 浏览器探测：Windows 走安装路径，Linux/macOS 走常见二进制名（CI 与本地同一份脚本）
 const candidates = [
