@@ -100,7 +100,7 @@ export const blocks = [
     category: '布局',
     label: '双栏',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"4\" width=\"8.4\" height=\"16\" rx=\"1.5\"/><rect x=\"12.6\" y=\"4\" width=\"8.4\" height=\"16\" rx=\"1.5\"/></svg>",
-    content: `<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px 0;">
+    content: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;padding:16px 0;">
   <div style="border-radius:12px;background:#f8fafc;padding:24px;min-height:80px;"><p style="margin:0;color:#94a3b8;">左栏</p></div>
   <div style="border-radius:12px;background:#f8fafc;padding:24px;min-height:80px;"><p style="margin:0;color:#94a3b8;">右栏</p></div>
 </div>`,
@@ -110,7 +110,7 @@ export const blocks = [
     category: '布局',
     label: '三栏',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"2.6\" y=\"4\" width=\"5.6\" height=\"16\" rx=\"1\"/><rect x=\"9.2\" y=\"4\" width=\"5.6\" height=\"16\" rx=\"1\"/><rect x=\"15.8\" y=\"4\" width=\"5.6\" height=\"16\" rx=\"1\"/></svg>",
-    content: `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:16px 0;">
+    content: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;padding:16px 0;">
   <div style="border-radius:12px;background:#f8fafc;padding:20px;min-height:60px;"></div>
   <div style="border-radius:12px;background:#f8fafc;padding:20px;min-height:60px;"></div>
   <div style="border-radius:12px;background:#f8fafc;padding:20px;min-height:60px;"></div>
@@ -187,21 +187,21 @@ export const blocks = [
     category: '布局',
     label: '双栏栅格',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"4\" width=\"8.4\" height=\"7.5\" rx=\"1.2\"/><rect x=\"12.6\" y=\"4\" width=\"8.4\" height=\"7.5\" rx=\"1.2\"/><rect x=\"3\" y=\"12.5\" width=\"8.4\" height=\"7.5\" rx=\"1.2\"/><rect x=\"12.6\" y=\"12.5\" width=\"8.4\" height=\"7.5\" rx=\"1.2\"/></svg>",
-    content: `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px;padding:24px;"></div>`,
+    content: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;padding:24px;"></div>`,
   },
   {
     id: 'pf-grid-3',
     category: '布局',
     label: '三栏栅格',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"2.6\" y=\"3.5\" width=\"5.6\" height=\"7.2\" rx=\"1\"/><rect x=\"9.2\" y=\"3.5\" width=\"5.6\" height=\"7.2\" rx=\"1\"/><rect x=\"15.8\" y=\"3.5\" width=\"5.6\" height=\"7.2\" rx=\"1\"/><rect x=\"2.6\" y=\"12.3\" width=\"5.6\" height=\"7.2\" rx=\"1\"/><rect x=\"9.2\" y=\"12.3\" width=\"5.6\" height=\"7.2\" rx=\"1\"/><rect x=\"15.8\" y=\"12.3\" width=\"5.6\" height=\"7.2\" rx=\"1\"/></svg>",
-    content: `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:24px;"></div>`,
+    content: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:24px;padding:24px;"></div>`,
   },
   {
     id: 'pf-grid-4',
     category: '布局',
     label: '四栏栅格',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"2.2\" y=\"3.5\" width=\"4.4\" height=\"7.2\" rx=\"0.8\"/><rect x=\"7.8\" y=\"3.5\" width=\"4.4\" height=\"7.2\" rx=\"0.8\"/><rect x=\"13.4\" y=\"3.5\" width=\"4.4\" height=\"7.2\" rx=\"0.8\"/><rect x=\"19\" y=\"3.5\" width=\"2.8\" height=\"7.2\" rx=\"0.8\"/><rect x=\"2.2\" y=\"12.3\" width=\"4.4\" height=\"7.2\" rx=\"0.8\"/><rect x=\"7.8\" y=\"12.3\" width=\"4.4\" height=\"7.2\" rx=\"0.8\"/><rect x=\"13.4\" y=\"12.3\" width=\"4.4\" height=\"7.2\" rx=\"0.8\"/><rect x=\"19\" y=\"12.3\" width=\"2.8\" height=\"7.2\" rx=\"0.8\"/></svg>",
-    content: `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding:24px;"></div>`,
+    content: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:24px;padding:24px;"></div>`,
   },
   {
     id: 'pf-footer',
@@ -656,7 +656,7 @@ export const blocks = [
     <a href="#" style="text-decoration:none;color:#6e6e73;">产品</a>
     <a href="#" style="text-decoration:none;color:#6e6e73;">支持</a>
   </div>
-  <a href="#" style="background:#1d1d1f;color:#ffffff;padding:7px 18px;border-radius:980px;font-size:13px;font-weight:600;text-decoration:none;">购买</a>
+  <a href="#" style="background:#0d0d0f;color:#fffdfe;padding:7px 18px;border-radius:980px;font-size:13px;font-weight:600;text-decoration:none;">购买</a>
 </nav>`,
   },
   {
@@ -686,7 +686,7 @@ export const blocks = [
       },
     },
     content: `<section style="max-width:1100px;margin:0 auto;padding:80px 24px;">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:56px;align-items:center;">
     <div style="border-radius:20px;background:linear-gradient(135deg,#e8e8ed,#f5f5f7);min-height:320px;display:flex;align-items:center;justify-content:center;color:#86868b;font-size:16px;font-weight:600;">产品图 / 截图</div>
     <div>
       <h2 style="font-size:36px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
@@ -713,7 +713,7 @@ export const blocks = [
       },
     },
     content: `<section style="max-width:1100px;margin:0 auto;padding:80px 24px;">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:56px;align-items:center;">
     <div>
       <h2 style="font-size:36px;font-weight:700;letter-spacing:-0.4px;margin:0 0 14px;color:#1d1d1f;">产品亮点</h2>
       <p style="font-size:18px;line-height:1.7;color:#6e6e73;margin:0 0 24px;">左侧放文字说明，介绍产品最大的卖点，让用户一眼看懂价值。</p>
@@ -741,7 +741,7 @@ export const blocks = [
     content: `<section style="max-width:1100px;margin:0 auto;padding:80px 24px;text-align:center;">
   <h2 style="font-size:40px;font-weight:700;letter-spacing:-0.5px;margin:0 0 12px;color:#1d1d1f;"><span data-pf-slot="title">功能特性</span></h2>
   <p style="font-size:19px;color:#6e6e73;margin:0 0 48px;"><span data-pf-slot="sub">三栏介绍你的核心功能。</span></p>
-  <div data-pf-items style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;text-align:left;">
+  <div data-pf-items style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;text-align:left;">
     <div style="padding:24px;border-radius:18px;background:#f5f5f7;">
       <h3 style="margin:0 0 8px;font-size:19px;font-weight:700;color:#1d1d1f;">特性一</h3>
       <p style="margin:0;font-size:15px;line-height:1.6;color:#6e6e73;">特性描述文字。</p>
@@ -775,7 +775,7 @@ export const blocks = [
     content: `<section style="padding:96px 24px;text-align:center;background:linear-gradient(135deg,#f5f5f7 0%,#e8e8ed 100%);">
   <h2 style="font-size:44px;font-weight:700;letter-spacing:-0.5px;margin:0 0 14px;color:#1d1d1f;"><span data-pf-slot="title">现在就开始</span></h2>
   <p style="font-size:19px;color:#6e6e73;margin:0 0 32px;"><span data-pf-slot="sub">还等什么？几分钟就能拥有一个漂亮的页面。</span></p>
-  <a href="#" style="display:inline-block;background:#1d1d1f;color:#ffffff;padding:14px 34px;border-radius:980px;font-size:17px;font-weight:600;text-decoration:none;"><span data-pf-slot="btn">立即开始</span></a>
+  <a href="#" style="display:inline-block;background:#0d0d0f;color:#fffdfe;padding:14px 34px;border-radius:980px;font-size:17px;font-weight:600;text-decoration:none;"><span data-pf-slot="btn">立即开始</span></a>
 </section>`,
   },
   {
@@ -805,13 +805,13 @@ export const blocks = [
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M8 4v16\"/><path d=\"M15 8h3M15 12h3M15 16h3\"/></svg>",
     content: `<section style="max-width:1300px;margin:0 auto;padding:48px 24px;">
   <h2 style="font-size:28px;font-weight:700;margin:0 0 24px;color:#1d1d1f;">热门活动</h2>
-  <div style="display:grid;grid-template-columns:minmax(260px,1fr) 2.6fr;gap:20px;align-items:stretch;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;align-items:stretch;">
     <a href="#" style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;background:linear-gradient(135deg,#f5f5f7,#e8e8ed);border-radius:18px;padding:36px;text-decoration:none;">
       <span style="font-size:26px;font-weight:700;color:#1d1d1f;">无畏16 2026</span>
       <span style="font-size:14px;color:#6e6e73;margin:10px 0 22px;line-height:1.6;">锐龙 R7 8845H · 144Hz 高刷</span>
-      <span style="background:#1d1d1f;color:#fff;padding:11px 26px;border-radius:8px;font-size:14px;font-weight:600;">立即抢购</span>
+      <span style="background:#0d0d0f;color:#fffdfe;padding:11px 26px;border-radius:8px;font-size:14px;font-weight:600;">立即抢购</span>
     </a>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;">
       <a href="#" style="display:block;background:#fff;border:1px solid #e5e5ea;border-radius:16px;overflow:hidden;text-decoration:none;">
         <img src="${placeholderImg(300, 200, '商品')}" style="width:100%;height:150px;object-fit:cover;display:block;" alt="">
         <div style="padding:14px 16px;">
@@ -855,7 +855,7 @@ export const blocks = [
     label: '品类图标',
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M3 7h18M3 12h18M3 17h18\"/><circle cx=\"7\" cy=\"7\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"13\" cy=\"12\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"9\" cy=\"17\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/></svg>",
     content: `<section style="max-width:1300px;margin:0 auto;padding:40px 24px;">
-  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:18px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:18px;">
     <a href="#" style="display:flex;flex-direction:column;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:22px 10px;">
       <img src="${placeholderImg(48, 48, '类目')}" style="width:44px;height:44px;border-radius:12px;" alt="">
       <span style="font-size:13px;color:#1d1d1f;">笔记本</span>
@@ -891,7 +891,7 @@ export const blocks = [
     media: "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M7 6l4 4-4 4M13 14h5\"/></svg>",
     content: `<section style="max-width:1200px;margin:0 auto;padding:48px 24px;">
   <h2 style="font-size:24px;font-weight:700;color:#1d1d1f;margin:0 0 22px;">全部教程</h2>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
     <div style="background:#f5f5f7;border-radius:14px;padding:20px 22px;">
       <h3 style="font-size:16px;font-weight:600;margin:0 0 12px;color:#1d1d1f;">前端开发</h3>
       <div style="display:flex;flex-direction:column;gap:9px;">

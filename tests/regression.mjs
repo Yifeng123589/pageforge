@@ -42,6 +42,54 @@ check('产物无 API Key', !/sk-[a-zA-Z0-9]{20,}/.test(built));
   check('撤销栈条数上限', many.length === DEFAULT_MAX_FRAMES, `保留 ${many.length} 帧`);
 }
 
+// ---------- 响应式与主题覆盖（纯函数，Node 侧单测）----------
+// 背景：360px 候选池（design-kit iframe 真实宽度）下，刚性多列会把三张卡挤成 90px、
+// 标题折 3 行。块必须用 auto-fit 而不是固定 1fr 1fr 1fr。
+{
+  const { blocks } = await import(pathToFileURL(join(ROOT, 'src', 'blocks.js')).href);
+  const rigid = [];
+  for (const b of blocks) {
+    for (const m of b.content.matchAll(/grid-template-columns:\s*([^;"]+)/g)) {
+      const v = m[1].trim();
+      if (/^repeat\(auto-fit/.test(v)) continue;
+      rigid.push(`${b.id}:${v}`);
+    }
+  }
+  check('块内无刚性多列（360px 可读性）', rigid.length === 0, rigid.length ? rigid.slice(0, 5).join(' | ') : `${blocks.length} 块全部 auto-fit`);
+}
+
+// 主题覆盖：新苹果色板必须能被换肤。否则 lineage（同块 + 3 主题）会产出相同 HTML，
+// 被 design-kit 当"跨轮重复"拒绝。
+{
+  const { blocks } = await import(pathToFileURL(join(ROOT, 'src', 'blocks.js')).href);
+  const { themes } = await import(pathToFileURL(join(ROOT, 'src', 'themes.js')).href);
+  const recolor = (html, t) => {
+    let o = html;
+    for (const [from, to] of Object.entries(t.map)) {
+      o = o.split(from).join(to).split(from.toUpperCase()).join(to);
+    }
+    return o;
+  };
+  // 这些块本就没有颜色，换肤无变化是正确行为
+  const colorless = new Set(['pf-carousel', 'pf-container', 'pf-spacer', 'pf-gallery',
+    'pf-grid-2', 'pf-grid-3', 'pf-grid-4', 'pf-image', 'pf-video']);
+  const dead = [];
+  for (const b of blocks) {
+    if (colorless.has(b.id)) continue;
+    if (new Set(themes.map((t) => recolor(b.content, t))).size === 1) dead.push(b.id);
+  }
+  check('有颜色的块都能换肤', dead.length === 0, dead.length ? `失效: ${dead.join(', ')}` : `${blocks.length - colorless.size} 块可换肤`);
+
+  // lineage 主战场：hero 系列必须在 3 套主题下产出 3 个不同 HTML
+  const pick = ['apple', 'flat', 'warm'].map((id) => themes.find((t) => t.id === id));
+  const heroIds = ['pf-hero', 'pf-hero-img', 'pf-hero-overlay', 'pf-section-split', 'pf-section-split-r'];
+  const weak = heroIds.filter((id) => {
+    const b = blocks.find((x) => x.id === id);
+    return new Set(pick.map((t) => recolor(b.content, t))).size < 3;
+  });
+  check('hero 组可用于 lineage（三主题互异）', weak.length === 0, weak.length ? `不足: ${weak.join(', ')}` : `${heroIds.length} 个 hero 均 3/3`);
+}
+
 // ---------- 1. 起 headless 浏览器 ----------
 // 浏览器探测：Windows 走安装路径，Linux/macOS 走常见二进制名（CI 与本地同一份脚本）
 const candidates = [
