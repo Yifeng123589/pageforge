@@ -171,6 +171,44 @@ check('产物无 API Key', !/sk-[a-zA-Z0-9]{20,}/.test(built));
   check('pf-video 被判为不可入池', !validateCandidateHtml(pad(video.content)).ok);
 }
 
+// compose_bundle：块组合直出 12 页（方案 §9 最小可交付）。
+// 硬约束：每页必含 pf-footer（foot 唯一来源）与一个 bullet 块；
+// 整池 12 页 HTML 互不相同；全部过 validate 且不是固定 canvas 页。
+{
+  const { composeBundle } = await import(pathToFileURL(join(ROOT, 'src', 'compose.js')).href);
+  const { validateCandidateHtml, isFixedCanvasPage } = await import(pathToFileURL(join(ROOT, 'src', 'validate.js')).href);
+  const content = {
+    title: '把想法做成页面',
+    subtitle: '一个能看见结果的可视化建站器',
+    bullets: [{ text: '三分钟成页', meta: '拖拽' }, { text: '所见即所得', meta: '画布' }, { text: '一键导出', meta: '静态' }],
+    cta: '开始制作',
+    foot: 'PageForge 演示',
+  };
+  const { bundle, problems, ok } = composeBundle({ content });
+  check('compose 生成 12 页且自检通过', ok && bundle.rounds.length === 4,
+    ok ? `${bundle.rounds.length} 轮 / ${bundle.rounds.reduce((n, r) => n + r.candidates.length, 0)} 页` : problems.slice(0, 3).join(' | '));
+
+  const all = bundle.rounds.flatMap((r) => r.candidates);
+  const htmls = new Set(all.map((c) => c.html));
+  check('compose 12 页 HTML 互不相同', htmls.size === all.length, `${htmls.size}/${all.length} 唯一`);
+
+  const invalid = all.filter((c) => !validateCandidateHtml(c.html).ok || isFixedCanvasPage(c.html));
+  check('compose 12 页均可入池（无脚本/外链/固定 stage）', invalid.length === 0,
+    invalid.length ? invalid.map((c) => c.id).join(',') : `${all.length} 页全部合规`);
+
+  // 内容槽必须可被 design-kit 读回，且三页一致（含 3 bullet + 3 meta + foot）
+  const slotShape = (html) => {
+    const count = (s) => (html.match(new RegExp(`data-slot="${s}"`, 'g')) || []).length;
+    return { title: count('title'), subtitle: count('subtitle'), bullet: count('bullet'), meta: count('meta'), cta: count('cta'), foot: count('foot') };
+  };
+  const badSlots = all.filter((c) => {
+    const s = slotShape(c.html);
+    return s.title !== 1 || s.subtitle !== 1 || s.bullet !== 3 || s.meta !== 3 || s.cta !== 1 || s.foot !== 1;
+  });
+  check('compose 内容槽恰好 1/1/3/3/1/1（无重复标题）', badSlots.length === 0,
+    badSlots.length ? badSlots.slice(0, 3).map((c) => `${c.id}:${JSON.stringify(slotShape(c.html))}`).join(' | ') : `${all.length} 页槽位规整`);
+}
+
 // ---------- 1. 起 headless 浏览器 ----------
 // 浏览器探测：Windows 走安装路径，Linux/macOS 走常见二进制名（CI 与本地同一份脚本）
 const candidates = [
