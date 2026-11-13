@@ -15,6 +15,10 @@ const NAMESPACE_ATTRS = ['xmlns', 'xmlns:xlink'];
 /** 允许的 data: 协议（内联资源） */
 const SAFE_DATA = /^data:image\/(png|jpe?g|gif|webp|svg\+xml|avif)[;,]|^data:font\/(woff2?|ttf|otf)[;,]|^data:text\/css[;,]|^#/i;
 
+/** 固定三栏以上 grid（与 design-kit 0.1.14 的判据逐字一致）；有 @media 时不判 */
+export const FIXED_MULTI_COLUMN_PATTERN =
+  /grid-template-columns\s*:\s*(?:repeat\(\s*(?:[3-9]|[1-9]\d+)\s*,\s*(?:minmax\([^)]*\)|1fr)\s*\)|(?:1fr\s+){2,}1fr)/i;
+
 /** 危险标签（可执行 / 可嵌入 / 可加载外部资源） */
 const DANGEROUS_TAGS = ['script', 'iframe', 'object', 'embed', 'base', 'link', 'meta-http-equiv'];
 
@@ -127,11 +131,23 @@ export function validateCandidateHtml(html) {
   if (/\bfetch\s*\(/i.test(html)) issues.push({ code: 'FETCH', message: '含 fetch()' });
   if (/\blocalStorage\b/i.test(html)) issues.push({ code: 'STORAGE', message: '含 localStorage' });
 
+  // 8. 360 可读性：无 @media 的固定三栏以上 grid
+  // 与 design-kit 0.1.14 的 FIXED_MULTI_COLUMN_PATTERN 对齐——两边判定必须一致，
+  // 否则会出现「PageForge 放行、kit 拒绝」的集成分歧（实测 2 例）。
+  if (!/@media\b/i.test(html) && FIXED_MULTI_COLUMN_PATTERN.test(html)) {
+    issues.push({
+      code: 'FIXED_MULTI_COLUMN',
+      message: '含固定三栏以上 grid 且没有 @media：360 下会挤压，改用 auto-fit 或 @media 单列',
+    });
+  }
+
   return { ok: issues.length === 0, issues };
 }
 
 /** 固定 stage（canvas 导出）检测：这类页面不能进候选池 */
 export function isFixedCanvasPage(html) {
   if (typeof html !== 'string') return false;
-  return /pf-canvas-stage/.test(html) || /width:\s*1440px/.test(html) && /transform-origin:\s*top center/.test(html);
+  return /pf-canvas-stage/.test(html)
+    || /data-pf-canvas/.test(html)
+    || (/width:\s*1440px/.test(html) && /transform-origin:\s*top center/.test(html));
 }

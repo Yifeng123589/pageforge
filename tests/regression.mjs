@@ -169,6 +169,16 @@ check('产物无 API Key', !/sk-[a-zA-Z0-9]{20,}/.test(built));
 
   const video = blocks.find((b) => b.id === 'pf-video');
   check('pf-video 被判为不可入池', !validateCandidateHtml(pad(video.content)).ok);
+
+  // 360 可读性闸门：固定三栏以上 grid 且无 @media 必须拒绝（与 design-kit 0.1.14 对齐）
+  const fixedThreeCol = pad('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;"></div>');
+  check('无 @media 的固定三栏被拒绝', !validateCandidateHtml(fixedThreeCol).ok,
+    validateCandidateHtml(fixedThreeCol).issues.map((i) => i.code).join(','));
+  const fixedWithMedia = pad('<style>@media(max-width:480px){.g{grid-template-columns:1fr}}</style>'
+    + '<div class="g" style="display:grid;grid-template-columns:1fr 1fr 1fr;"></div>');
+  check('有 @media 的固定三栏放行', validateCandidateHtml(fixedWithMedia).ok);
+  const autoFit = pad('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));"></div>');
+  check('auto-fit 三栏放行', validateCandidateHtml(autoFit).ok);
 }
 
 // compose_bundle：块组合直出 12 页（方案 §9 最小可交付）。
